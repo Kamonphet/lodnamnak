@@ -1,0 +1,531 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --surface-bg: #EAF6F0;
+    --surface-card: rgba(255, 255, 255, 0.65);
+    --accent-primary: #226F51;
+    --accent-warm: #B84D28;
+    --ink-main: #16261F;
+    --ink-muted: #3A4F46;
+  }
+
+  html {
+    font-family: 'Noto Sans Thai', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    line-height: 1.65;
+    -webkit-tap-highlight-color: transparent;
+    caret-color: var(--accent-primary);
+    scrollbar-color: rgba(46, 139, 103, 0.35) transparent;
+  }
+
+  body {
+    margin: 0;
+    background: linear-gradient(155deg, #E8F6EF 0%, #F7FBF8 46%, #FDF5EE 100%);
+    background-attachment: fixed;
+    color: var(--ink-main);
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: #C7EBDD;
+    color: #103325;
+  }
+
+  :focus-visible {
+    outline: 2px solid #226F51;
+    outline-offset: 2px;
+  }
+
+  h1, h2, h3, h4 {
+    line-height: 1.32;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #4D6359;
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   Ambient Luminous Backdrop (gives Liquid Glass real refraction)
+   ========================================================= */
+.liquid-ambient-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.liquid-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(56px);
+  opacity: 0.62;
+  will-change: transform;
+}
+
+.liquid-orb-mint {
+  width: 320px;
+  height: 320px;
+  top: -70px;
+  left: calc(50% - 230px);
+  background: radial-gradient(circle, rgba(108, 224, 178, 0.72) 0%, rgba(108, 224, 178, 0) 72%);
+  animation: orbFloatA 16s ease-in-out infinite alternate;
+}
+
+.liquid-orb-peach {
+  width: 300px;
+  height: 300px;
+  top: 34%;
+  left: calc(50% + 10px);
+  background: radial-gradient(circle, rgba(255, 198, 162, 0.65) 0%, rgba(255, 198, 162, 0) 72%);
+  animation: orbFloatB 19s ease-in-out infinite alternate;
+}
+
+.liquid-orb-aqua {
+  width: 340px;
+  height: 340px;
+  bottom: -60px;
+  left: calc(50% - 200px);
+  background: radial-gradient(circle, rgba(142, 222, 232, 0.62) 0%, rgba(142, 222, 232, 0) 72%);
+  animation: orbFloatA 21s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes orbFloatA {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(28px, 34px, 0) scale(1.08);
+  }
+}
+
+@keyframes orbFloatB {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-32px, -26px, 0) scale(1.07);
+  }
+}
+
+/* =========================================================
+   Liquid Glass Optical Surfaces
+   ========================================================= */
+.glass-header {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.76) 0%,
+    rgba(242, 252, 247, 0.56) 100%
+  );
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  box-shadow:
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.45),
+    0 10px 28px -12px rgba(18, 62, 45, 0.14);
+}
+
+.glass-dock {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(238, 250, 244, 0.58) 100%
+  );
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.96),
+    inset 0 -1px 1px rgba(190, 228, 210, 0.42),
+    0 16px 36px -10px rgba(16, 56, 40, 0.2);
+}
+
+.glass-dock-indicator {
+  background: linear-gradient(
+    150deg,
+    rgba(218, 246, 233, 0.92) 0%,
+    rgba(255, 255, 255, 0.78) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow:
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.98),
+    0 6px 16px -6px rgba(34, 111, 81, 0.24);
+  transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-card {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.74) 0%,
+    rgba(255, 255, 255, 0.48) 54%,
+    rgba(236, 250, 243, 0.58) 100%
+  );
+  backdrop-filter: blur(22px) saturate(185%);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  box-shadow:
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.92),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.45),
+    0 14px 32px -14px rgba(18, 60, 44, 0.13);
+}
+
+.glass-card-mint {
+  background: linear-gradient(
+    150deg,
+    rgba(224, 247, 237, 0.74) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(204, 240, 224, 0.62) 100%
+  );
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.96),
+    inset 0 -1px 1px rgba(176, 223, 202, 0.48),
+    0 18px 38px -14px rgba(20, 82, 58, 0.16);
+}
+
+.glass-subtle {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.66) 0%,
+    rgba(241, 251, 246, 0.44) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.glass-subtle-active {
+  background: linear-gradient(
+    145deg,
+    rgba(216, 244, 231, 0.82) 0%,
+    rgba(240, 252, 246, 0.68) 100%
+  );
+  border: 1px solid rgba(46, 139, 103, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 6px 16px -8px rgba(34, 111, 81, 0.22);
+}
+
+.glass-pill {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(242, 250, 246, 0.52) 100%
+  );
+  backdrop-filter: blur(14px) saturate(175%);
+  -webkit-backdrop-filter: blur(14px) saturate(175%);
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 4px 12px -4px rgba(18, 58, 42, 0.1);
+}
+
+.glass-pill:hover:not(:disabled) {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(226, 247, 237, 0.7) 100%
+  );
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(180, 218, 200, 0.75);
+  box-shadow:
+    inset 0 1.5px 3px rgba(18, 56, 40, 0.04),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.88);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: #2E8B67;
+  box-shadow:
+    0 0 0 3px rgba(46, 139, 103, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+  outline: none;
+}
+
+.glass-btn-primary {
+  background: linear-gradient(
+    160deg,
+    rgba(52, 156, 115, 0.95) 0%,
+    rgba(28, 105, 76, 0.98) 100%
+  );
+  color: #FFFDF9;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow:
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.46),
+    inset 0 -1px 1px rgba(10, 48, 34, 0.32),
+    0 10px 22px -8px rgba(28, 105, 76, 0.42);
+}
+
+.glass-btn-warm {
+  background: linear-gradient(
+    160deg,
+    rgba(224, 106, 66, 0.95) 0%,
+    rgba(184, 77, 40, 0.98) 100%
+  );
+  color: #FFFDF9;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow:
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.46),
+    0 10px 22px -8px rgba(184, 77, 40, 0.38);
+}
+
+.glass-btn-danger {
+  background: linear-gradient(
+    160deg,
+    rgba(198, 62, 98, 0.95) 0%,
+    rgba(158, 42, 74, 0.98) 100%
+  );
+  color: #FFFDF9;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow:
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.44),
+    0 10px 22px -8px rgba(158, 42, 74, 0.4);
+}
+
+.glass-alert-warn {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 242, 232, 0.84) 0%,
+    rgba(255, 228, 210, 0.68) 100%
+  );
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  border: 1px solid rgba(217, 99, 59, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 10px 24px -12px rgba(184, 77, 40, 0.18);
+}
+
+.glass-alert-critical {
+  background: linear-gradient(
+    145deg,
+    rgba(253, 238, 243, 0.86) 0%,
+    rgba(250, 218, 228, 0.72) 100%
+  );
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  border: 1px solid rgba(180, 56, 90, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 24px -12px rgba(180, 56, 90, 0.2);
+}
+
+.glass-toast {
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(236, 250, 243, 0.78) 100%
+  );
+  backdrop-filter: blur(26px) saturate(200%);
+  -webkit-backdrop-filter: blur(26px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow:
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.98),
+    0 16px 36px -10px rgba(16, 56, 40, 0.24);
+}
+
+.glass-modal-backdrop {
+  background: rgba(16, 38, 29, 0.28);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+}
+
+/* =========================================================
+   Motion & Interactive Feedback
+   ========================================================= */
+.tabular-data {
+  font-variant-numeric: tabular-nums;
+}
+
+.safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.tactile-btn {
+  transition:
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease,
+    border-color 180ms ease,
+    opacity 160ms ease;
+}
+
+.tactile-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+@keyframes pageSlideRight {
+  0% {
+    opacity: 0;
+    transform: translate3d(18px, 4px, 0) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes pageSlideLeft {
+  0% {
+    opacity: 0;
+    transform: translate3d(-18px, 4px, 0) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes cardRise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.988);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes toastSlideIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -22px, 0) scale(0.93);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes toastProgress {
+  0% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes backdropFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes modalReveal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes confirmCheck {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.76);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes listItemEnter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-page-right {
+  animation: pageSlideRight 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-page-left {
+  animation: pageSlideLeft 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-card-rise {
+  animation: cardRise 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.stagger-1 {
+  animation-delay: 35ms;
+}
+
+.stagger-2 {
+  animation-delay: 75ms;
+}
+
+.stagger-3 {
+  animation-delay: 115ms;
+}
+
+.stagger-4 {
+  animation-delay: 155ms;
+}
+
+.animate-toast-in {
+  animation: toastSlideIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-toast-progress {
+  transform-origin: left center;
+  animation: toastProgress 3200ms linear forwards;
+}
+
+.animate-backdrop-in {
+  animation: backdropFadeIn 200ms ease-out both;
+}
+
+.animate-modal-pop {
+  animation: modalReveal 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-confirm-pop {
+  animation: confirmCheck 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-list-item {
+  animation: listItemEnter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-orb {
+    animation: none !important;
+  }
+}
