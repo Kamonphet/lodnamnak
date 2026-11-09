@@ -2,6 +2,7 @@ import {
   ExerciseIntensity,
   ExerciseLogItem,
   ExerciseType,
+  getLocalDateKey,
   UserProfile,
   WeeklyActivityLevel,
   WeeklyWorkoutDay,
@@ -154,7 +155,7 @@ export function createExerciseLogItem(
   exerciseType: ExerciseType,
   durationMinutes: number,
   intensity: ExerciseIntensity = 'moderate',
-  dateKey: string = new Date().toISOString().slice(0, 10),
+  dateKey: string = getLocalDateKey(),
   customLabel?: string
 ): ExerciseLogItem {
   const meta = EXERCISE_CATALOG[exerciseType] ?? EXERCISE_CATALOG.custom;

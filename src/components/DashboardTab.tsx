@@ -10,6 +10,7 @@ import {
   Settings2,
   ShieldAlert,
   Target,
+  TrendingUp,
   Trophy,
 } from 'lucide-react';
 import {
@@ -18,6 +19,7 @@ import {
   GoalTimelineOption,
   HealthMetrics,
   PaceRateKgPerWeek,
+  ProgressSummary,
   SafetyAlert,
   UserProfile,
   WeightCheckIn,
@@ -26,6 +28,7 @@ import { Avatar3DScene } from './Avatar3DScene';
 import { GamificationCard } from './GamificationCard';
 import { ToastMessage } from './LiquidToast';
 import { CalorieRingGauge } from './NutritionVisuals';
+import { ProgressHistoryPanel } from './ProgressHistoryPanel';
 import { WaterGlassTracker } from './WaterGlassTracker';
 
 interface DashboardTabProps {
@@ -45,6 +48,7 @@ interface DashboardTabProps {
     consumedFat: number;
   };
   gamification: GamificationSummary;
+  progress: ProgressSummary;
   weightHistory: WeightCheckIn[];
   onSelectPace: (pace: PaceRateKgPerWeek) => void;
   onReportWeight: (weightKg: number) => { ok: boolean; error?: string };
@@ -61,6 +65,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   safetyAlerts,
   dailyTotals,
   gamification,
+  progress,
   weightHistory,
   onSelectPace,
   onReportWeight,
@@ -69,7 +74,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   onEditProfile,
   onNotify,
 }) => {
-  const [sectionTab, setSectionTab] = useState<'today' | 'quests' | 'plan'>('today');
+  const [sectionTab, setSectionTab] = useState<'today' | 'progress' | 'quests' | 'plan'>('today');
   const [newWeightInput, setNewWeightInput] = useState('');
   const [justConfirmedWeight, setJustConfirmedWeight] = useState(false);
   const [weightFeedback, setWeightFeedback] = useState<{
@@ -194,14 +199,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       <div
         role="tablist"
         aria-label="หมวดข้อมูลหน้าแรก"
-        className="grid grid-cols-3 gap-1.5 rounded-2xl glass-card p-1.5 animate-card-rise stagger-2"
+        className="grid grid-cols-4 gap-1 rounded-2xl glass-card p-1 animate-card-rise stagger-2"
       >
         <button
           type="button"
           role="tab"
           aria-selected={sectionTab === 'today'}
           onClick={() => setSectionTab('today')}
-          className={`tactile-btn rounded-xl py-2 px-2 text-xs font-bold inline-flex items-center justify-center gap-1 ${
+          className={`tactile-btn rounded-xl py-2 px-1 text-xs font-bold inline-flex items-center justify-center gap-1 ${
             sectionTab === 'today' ? 'glass-btn-primary' : 'text-ink-700'
           }`}
         >
@@ -212,9 +217,22 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         <button
           type="button"
           role="tab"
+          aria-selected={sectionTab === 'progress'}
+          onClick={() => setSectionTab('progress')}
+          className={`tactile-btn rounded-xl py-2 px-1 text-xs font-bold inline-flex items-center justify-center gap-1 ${
+            sectionTab === 'progress' ? 'glass-btn-primary' : 'text-ink-700'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+          <span>พัฒนาการ</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
           aria-selected={sectionTab === 'quests'}
           onClick={() => setSectionTab('quests')}
-          className={`tactile-btn rounded-xl py-2 px-2 text-xs font-bold inline-flex items-center justify-center gap-1 tabular-data ${
+          className={`tactile-btn rounded-xl py-2 px-1 text-xs font-bold inline-flex items-center justify-center gap-1 tabular-data ${
             sectionTab === 'quests' ? 'glass-btn-primary' : 'text-ink-700'
           }`}
         >
@@ -229,12 +247,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           role="tab"
           aria-selected={sectionTab === 'plan'}
           onClick={() => setSectionTab('plan')}
-          className={`tactile-btn rounded-xl py-2 px-2 text-xs font-bold inline-flex items-center justify-center gap-1 ${
+          className={`tactile-btn rounded-xl py-2 px-1 text-xs font-bold inline-flex items-center justify-center gap-1 ${
             sectionTab === 'plan' ? 'glass-btn-primary' : 'text-ink-700'
           }`}
         >
           <Target className="w-3.5 h-3.5 shrink-0" />
-          <span>แผน & เผาผลาญ</span>
+          <span>แผน</span>
         </button>
       </div>
 
@@ -398,6 +416,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             )}
           </div>
         </section>
+      )}
+
+      {sectionTab === 'progress' && (
+        <ProgressHistoryPanel progress={progress} />
       )}
 
       {sectionTab === 'quests' && (

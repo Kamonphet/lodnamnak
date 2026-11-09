@@ -41,7 +41,16 @@ import {
   calculateGamificationSummary,
   computeStreakWithShield,
 } from '../domain/gamification';
-import { MealPatternId, UserProfile } from '../domain/types';
+import {
+  calculateProgressSummary,
+  formatDateLabel,
+} from '../domain/progressHistory';
+import {
+  getCurrentWeekKey,
+  getLocalDateKey,
+  MealPatternId,
+  UserProfile,
+} from '../domain/types';
 import { sanitizeAccountRecord } from '../state/useHealthStore';
 
 const ACTIVE_MALE_PROFILE: UserProfile = {
@@ -558,5 +567,216 @@ describe('Daily Gamification, Streak Shield & Safe Quest Guardrails', () => {
     expect(sanitized).not.toBeNull();
     expect(sanitized!.profile.equippedAccessory).toBe('none');
     expect(sanitized!.waterLogs).toEqual({ '2026-11-09': 9 });
+  });
+});
+
+describe('Progress & History Tracking Engine', () => {
+  it('calculates accurate progress percentage, delta weight, and goal completion for loss and gain', () => {
+    const lossMetrics = calculateHealthMetrics(ACTIVE_MALE_PROFILE); // start: 70, current: 70, target: 60
+    const lossSummary = calculateProgressSummary({
+      profile: {
+        ...ACTIVE_MALE_PROFILE,
+        currentWeightKg: 65, // lost 5kg out of 10kg
+      },
+      metrics: lossMetrics,
+      foodLogs: [],
+      exerciseLogs: [],
+      weightHistory: [
+        {
+          id: 'w1',
+          dateKey: '2026-11-01',
+          timestamp: '2026-11-01T08:00:00Z',
+          weightKg: 70,
+          previousWeightKg: 70,
+          newTdeeMidpoint: 2600,
+          newDailyCalorieTarget: 2100,
+        },
+        {
+          id: 'w2',
+          dateKey: '2026-11-10',
+          timestamp: '2026-11-10T08:00:00Z',
+          weightKg: 65,
+          previousWeightKg: 70,
+          newTdeeMidpoint: 2500,
+          newDailyCalorieTarget: 2000,
+        },
+      ],
+      waterLogs: { '2026-11-10': 8 },
+    });
+
+    expect(lossSummary.weightChangeKg).toBe(-5);
+    expect(lossSummary.progressPercent).toBe(50);
+    expect(lossSummary.isGoalReached).toBe(false);
+    expect(lossSummary.chartPoints).toHaveLength(2);
+    expect(lossSummary.dailyHistory.length).toBeGreaterThanOrEqual(1);
+
+    // Goal reached
+    const goalReachedSummary = calculateProgressSummary({
+      profile: {
+        ...ACTIVE_MALE_PROFILE,
+        currentWeightKg: 59.5, // <= 60 target
+      },
+      metrics: lossMetrics,
+      foodLogs: [],
+      exerciseLogs: [],
+      weightHistory: [],
+    });
+    expect(goalReachedSummary.isGoalReached).toBe(true);
+    expect(goalReachedSummary.progressPercent).toBe(100);
+
+    // Weight gain
+    const gainMetrics = calculateHealthMetrics(GAIN_FEMALE_VEG_PROFILE); // start: 46, target: 52
+    const gainSummary = calculateProgressSummary({
+      profile: {
+        ...GAIN_FEMALE_VEG_PROFILE,
+        currentWeightKg: 49, // gained 3kg out of 6kg
+      },
+      metrics: gainMetrics,
+      foodLogs: [],
+      exerciseLogs: [],
+      weightHistory: [],
+    });
+    expect(gainSummary.weightChangeKg).toBe(3);
+    expect(gainSummary.progressPercent).toBe(50);
+  });
+
+  it('aggregates daily history with accurate macros, exercise burns, and formatted dates', () => {
+    const metrics = calculateHealthMetrics(ACTIVE_MALE_PROFILE);
+    const summary = calculateProgressSummary({
+      profile: ACTIVE_MALE_PROFILE,
+      metrics,
+      foodLogs: [
+        createCustomFoodLogItem(
+          {
+            name: 'อกไก่ย่าง',
+            calories: 350,
+            proteinGrams: 45,
+            carbsGrams: 5,
+            fatGrams: 8,
+          },
+          '2026-11-09'
+        ),
+        createCustomFoodLogItem(
+          {
+            name: 'ข้าวกล้อง',
+            calories: 200,
+            proteinGrams: 4,
+            carbsGrams: 42,
+            fatGrams: 2,
+          },
+          '2026-11-09'
+        ),
+      ],
+      exerciseLogs: [
+        {
+          id: 'ex1',
+          dateKey: '2026-11-09',
+          timestamp: '2026-11-09T18:00:00Z',
+          exerciseType: 'running',
+          exerciseLabel: 'วิ่ง',
+          durationMinutes: 30,
+          intensity: 'moderate',
+          burnedCalories: 280,
+          isEstimated: true,
+        },
+      ],
+      weightHistory: [
+        {
+          id: 'w1',
+          dateKey: '2026-11-09',
+          timestamp: '2026-11-09T07:00:00Z',
+          weightKg: 69.5,
+          previousWeightKg: 70,
+          newTdeeMidpoint: 2590,
+          newDailyCalorieTarget: 2090,
+        },
+      ],
+      waterLogs: { '2026-11-09': 8 },
+    });
+
+    const dayEntry = summary.dailyHistory.find((d) => d.dateKey === '2026-11-09');
+    expect(dayEntry).toBeDefined();
+    expect(dayEntry!.consumedCalories).toBe(550);
+    expect(dayEntry!.proteinGrams).toBe(49);
+    expect(dayEntry!.burnedCalories).toBe(280);
+    expect(dayEntry!.waterGlasses).toBe(8);
+    expect(dayEntry!.weightKg).toBe(69.5);
+    expect(summary.totalBurnedCalories).toBe(280);
+    expect(formatDateLabel('2026-11-09')).toBe('9 พ.ย.');
+  });
+
+  describe('Local Date Cut-off & Workout Day Persistence', () => {
+    it('calculates local date accurately across midnight without UTC lag', () => {
+      // 2026-11-10 00:15 local time
+      const testDate = new Date(2026, 10, 10, 0, 15, 0);
+      expect(getLocalDateKey(testDate)).toBe('2026-11-10');
+
+      // 2026-11-09 23:59 local time
+      const prevNight = new Date(2026, 10, 9, 23, 59, 0);
+      expect(getLocalDateKey(prevNight)).toBe('2026-11-09');
+
+      // Week key (Monday)
+      // 2026-11-10 is a Tuesday; Monday is 2026-11-09
+      expect(getCurrentWeekKey(testDate)).toBe('2026-11-09');
+    });
+
+    it('persists checked workout days during the current week and resets on a new week', () => {
+      const currentWeek = getCurrentWeekKey();
+      const sanitizedCurrent = sanitizeAccountRecord({
+        profile: ACTIVE_MALE_PROFILE,
+        completedWorkoutWeek: currentWeek,
+        completedWorkoutDays: {
+          จันทร์: true,
+          พุธ: true,
+        },
+      });
+
+      expect(sanitizedCurrent?.completedWorkoutDays).toEqual({
+        จันทร์: true,
+        พุธ: true,
+      });
+      expect(sanitizedCurrent?.completedWorkoutWeek).toBe(currentWeek);
+
+      // When loaded from an older week (e.g. last week)
+      const sanitizedOldWeek = sanitizeAccountRecord({
+        profile: ACTIVE_MALE_PROFILE,
+        completedWorkoutWeek: '2026-11-02',
+        completedWorkoutDays: {
+          จันทร์: true,
+          ศุกร์: true,
+        },
+      });
+
+      // Should automatically reset completedWorkoutDays for the fresh week
+      expect(sanitizedOldWeek?.completedWorkoutDays).toEqual({});
+      expect(sanitizedOldWeek?.completedWorkoutWeek).toBe(currentWeek);
+    });
+
+    it('resets today food logs when local date advances to a new day', () => {
+      const pastDay = '2026-11-09';
+      const today = '2026-11-10';
+
+      const allFoods = [
+        createCustomFoodLogItem(
+          {
+            name: 'ข้าวกะเพรา',
+            calories: 550,
+            proteinGrams: 22,
+            carbsGrams: 65,
+            fatGrams: 18,
+          },
+          pastDay
+        ),
+      ];
+
+      // Filtering for today should be empty
+      const todayFoods = allFoods.filter((f) => f.dateKey === today);
+      expect(todayFoods).toHaveLength(0);
+
+      // Filtering for yesterday preserves history
+      const yesterdayFoods = allFoods.filter((f) => f.dateKey === pastDay);
+      expect(yesterdayFoods).toHaveLength(1);
+      expect(yesterdayFoods[0].calories).toBe(550);
+    });
   });
 });

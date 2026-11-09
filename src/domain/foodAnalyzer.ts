@@ -1,4 +1,9 @@
-import { FoodLogItem, HabitAnalysisResult, PrimaryGoal } from './types';
+import {
+  FoodLogItem,
+  getLocalDateKey,
+  HabitAnalysisResult,
+  PrimaryGoal,
+} from './types';
 
 interface DishTemplate {
   keywords: string[];
@@ -470,7 +475,7 @@ function extractQuantity(segment: string): { count: number; hasExplicitCount: bo
 
 export function parseSingleFoodSegment(
   rawSegment: string,
-  dateKey: string = new Date().toISOString().slice(0, 10)
+  dateKey: string = getLocalDateKey()
 ): FoodLogItem {
   const cleaned = rawSegment.trim();
   const { count, hasExplicitCount } = extractQuantity(cleaned);
@@ -589,7 +594,7 @@ export function createCustomFoodLogItem(
     carbsGrams: number;
     fatGrams: number;
   },
-  dateKey: string = new Date().toISOString().slice(0, 10)
+  dateKey: string = getLocalDateKey()
 ): FoodLogItem {
   return {
     id: `food-custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -608,7 +613,7 @@ export function createCustomFoodLogItem(
 
 export function parseThaiFoodInput(
   rawText: string,
-  dateKey: string = new Date().toISOString().slice(0, 10)
+  dateKey: string = getLocalDateKey()
 ): FoodLogItem[] {
   const trimmed = rawText
     .replace(/^(วันนี้กิน|มื้อนี้กิน|กิน|ทาน|เพิ่งกิน|จัด)\s*/i, '')

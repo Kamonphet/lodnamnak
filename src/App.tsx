@@ -423,7 +423,8 @@ export const App: React.FC = () => {
               {activeTab === 'dashboard' &&
                 store.profile &&
                 store.metrics &&
-                store.gamification && (
+                store.gamification &&
+                store.progress && (
                   <DashboardTab
                     profile={store.profile}
                     metrics={store.metrics}
@@ -431,6 +432,7 @@ export const App: React.FC = () => {
                     safetyAlerts={store.safetyAlerts}
                     dailyTotals={store.dailyTotals}
                     gamification={store.gamification}
+                    progress={store.progress}
                     weightHistory={store.weightHistory}
                     onSelectPace={store.selectPace}
                     onReportWeight={store.reportNewWeight}
@@ -474,6 +476,8 @@ export const App: React.FC = () => {
                   profile={store.profile}
                   todayExercises={store.todayExercises}
                   weeklySchedule={store.weeklySchedule}
+                  completedDays={store.completedWorkoutDays}
+                  onToggleDayCompleted={store.toggleWorkoutDay}
                   onAddExercise={store.addExerciseLog}
                   onRemoveExercise={store.removeExerciseLog}
                   onUpdateWorkoutDays={store.updatePreferredWorkoutDays}

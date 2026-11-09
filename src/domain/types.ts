@@ -344,6 +344,41 @@ export interface GamificationSummary {
   accessories: UnlockableAccessoryMeta[];
 }
 
+export interface DailyHistoryEntry {
+  dateKey: string;
+  weightKg?: number;
+  consumedCalories: number;
+  targetCalories: number;
+  burnedCalories: number;
+  waterGlasses: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
+  foodsCount: number;
+  exercisesCount: number;
+}
+
+export interface WeightChartPoint {
+  dateKey: string;
+  dateLabel: string;
+  weightKg: number;
+  xPct: number;
+  yPct: number;
+}
+
+export interface ProgressSummary {
+  startWeightKg: number;
+  currentWeightKg: number;
+  targetWeightKg: number;
+  weightChangeKg: number;
+  progressPercent: number;
+  isGoalReached: boolean;
+  totalBurnedCalories: number;
+  totalTrackedDays: number;
+  chartPoints: WeightChartPoint[];
+  dailyHistory: DailyHistoryEntry[];
+}
+
 export interface UserAccountRecord {
   id: string;
   profile: UserProfile;
@@ -354,4 +389,29 @@ export interface UserAccountRecord {
   chatMessages: CoachChatMessage[];
   mealPlan?: DailyMealPlan;
   waterLogs?: Record<string, number>;
+  completedWorkoutDays?: Record<string, boolean>;
+  completedWorkoutWeek?: string;
+}
+
+/**
+ * คืนค่า YYYY-MM-DD ตาม Local Time ของเครื่องผู้ใช้
+ * ป้องกันปัญหาบั๊ก UTC ที่ข้ามวันช้าไป 7 ชั่วโมงสำหรับประเทศไทย (UTC+7)
+ */
+export function getLocalDateKey(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * คืนค่า identifier ของสัปดาห์ปัจจุบันตาม Local Time (ระบุด้วยวันที่ของวันจันทร์ของสัปดาห์นั้น YYYY-MM-DD)
+ * ใช้วันจันทร์เป็นวันเริ่มสัปดาห์ตามมาตรฐาน ISO
+ */
+export function getCurrentWeekKey(date: Date = new Date()): string {
+  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = localDate.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  localDate.setDate(localDate.getDate() + diffToMonday);
+  return getLocalDateKey(localDate);
 }

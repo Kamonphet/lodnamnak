@@ -1,6 +1,7 @@
 import { parseDietaryFlags } from './mealPlanner';
 import {
   FoodLogItem,
+  getLocalDateKey,
   NutriScoreGrade,
   OpenFoodProduct,
   PlannedMealItem,
@@ -948,7 +949,7 @@ export function scaleOpenFoodProduct(
 export function createFoodLogFromProduct(
   product: OpenFoodProduct,
   multiplier: ServingMultiplier = 1,
-  dateKey = new Date().toISOString().slice(0, 10)
+  dateKey = getLocalDateKey()
 ): FoodLogItem {
   const scaled = scaleOpenFoodProduct(product, multiplier);
   const displayTitle = product.brand

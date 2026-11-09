@@ -31,6 +31,8 @@ interface WorkoutPlanTabProps {
   profile: UserProfile;
   todayExercises: ExerciseLogItem[];
   weeklySchedule: WeeklyWorkoutDay[];
+  completedDays?: Record<string, boolean>;
+  onToggleDayCompleted?: (dayName: string) => void;
   onAddExercise: (
     type: ExerciseType,
     durationMinutes: number,
@@ -85,6 +87,8 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
   profile,
   todayExercises,
   weeklySchedule,
+  completedDays,
+  onToggleDayCompleted,
   onAddExercise,
   onRemoveExercise,
   onUpdateWorkoutDays,
@@ -99,7 +103,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
   );
   const [intensity, setIntensity] = useState<ExerciseIntensity>('moderate');
   const [justLogged, setJustLogged] = useState(false);
-  const [checkedDays, setCheckedDays] = useState<Record<string, boolean>>({});
+  const checkedDays = completedDays ?? {};
 
   const durationNum = Math.max(5, Math.min(240, Number(durationStr) || 30));
   const previewBurn = calculateExerciseBurn(
@@ -159,7 +163,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
 
   const toggleDayCompleted = (day: WeeklyWorkoutDay) => {
     const nextVal = !checkedDays[day.dayName];
-    setCheckedDays((prev) => ({ ...prev, [day.dayName]: nextVal }));
+    onToggleDayCompleted?.(day.dayName);
     if (nextVal) {
       onNotify?.({
         title: `เช็กอิน ${day.dayName} เรียบร้อย`,

@@ -5,6 +5,7 @@ import {
   ExerciseLogItem,
   FoodLogItem,
   GamificationSummary,
+  getLocalDateKey,
   HealthMetrics,
   UnlockableAccessoryMeta,
   WeekCheckInDot,
@@ -143,8 +144,7 @@ export function computeStreakWithShield(
 export function calculateGamificationSummary(
   input: GamificationInput
 ): GamificationSummary {
-  const todayKey =
-    input.referenceDateKey ?? new Date().toISOString().slice(0, 10);
+  const todayKey = input.referenceDateKey ?? getLocalDateKey();
   const waterLogs = input.waterLogs ?? {};
   const todayWaterGlasses = Math.max(
     0,

@@ -37,6 +37,7 @@ import {
   calculateGamificationSummary,
   VALID_AVATAR_ACCESSORIES,
 } from '../domain/gamification';
+import { calculateProgressSummary } from '../domain/progressHistory';
 import {
   AvatarAccessoryId,
   CoachChatMessage,
@@ -47,6 +48,8 @@ import {
   FoodLogItem,
   GamificationSummary,
   Gender,
+  getCurrentWeekKey,
+  getLocalDateKey,
   HabitAnalysisResult,
   MealPatternId,
   NutriScoreGrade,
@@ -55,6 +58,7 @@ import {
   PlannedMealItem,
   PlateSelection,
   PrimaryGoal,
+  ProgressSummary,
   UserAccountRecord,
   UserProfile,
   WeeklyActivityLevel,
@@ -70,7 +74,7 @@ interface MultiAccountState {
 }
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalDateKey();
 }
 
 function createWelcomeMessage(profile: UserProfile): CoachChatMessage {
@@ -507,6 +511,31 @@ export function sanitizeAccountRecord(
     }
   }
 
+  const currentWeek = getCurrentWeekKey();
+  let completedWorkoutWeek = cleanText(raw.completedWorkoutWeek, 16);
+  let completedWorkoutDays: Record<string, boolean> | undefined;
+
+  if (
+    raw.completedWorkoutDays &&
+    typeof raw.completedWorkoutDays === 'object' &&
+    !Array.isArray(raw.completedWorkoutDays)
+  ) {
+    if (completedWorkoutWeek === currentWeek) {
+      const safeDays: Record<string, boolean> = {};
+      for (const [k, v] of Object.entries(raw.completedWorkoutDays).slice(0, 14)) {
+        if (typeof k === 'string' && k.length <= 40 && typeof v === 'boolean') {
+          safeDays[k] = v;
+        }
+      }
+      completedWorkoutDays = safeDays;
+    } else {
+      completedWorkoutDays = {};
+      completedWorkoutWeek = currentWeek;
+    }
+  } else {
+    completedWorkoutWeek = currentWeek;
+  }
+
   return {
     id,
     profile: { ...candidateProfile, id },
@@ -517,6 +546,8 @@ export function sanitizeAccountRecord(
     chatMessages,
     ...(mealPlan ? { mealPlan } : {}),
     ...(waterLogs ? { waterLogs } : {}),
+    ...(completedWorkoutDays ? { completedWorkoutDays } : {}),
+    completedWorkoutWeek,
   };
 }
 
@@ -665,6 +696,25 @@ export function useHealthStore() {
     activeAccount?.weightHistory,
     activeAccount?.waterLogs,
     currentDayKey,
+  ]);
+
+  const progress: ProgressSummary | null = useMemo(() => {
+    if (!profile || !metrics) return null;
+    return calculateProgressSummary({
+      profile,
+      metrics,
+      foodLogs: activeAccount?.foodLogs ?? [],
+      exerciseLogs: activeAccount?.exerciseLogs ?? [],
+      weightHistory: activeAccount?.weightHistory ?? [],
+      waterLogs: activeAccount?.waterLogs,
+    });
+  }, [
+    profile,
+    metrics,
+    activeAccount?.foodLogs,
+    activeAccount?.exerciseLogs,
+    activeAccount?.weightHistory,
+    activeAccount?.waterLogs,
   ]);
 
   const updateActiveAccount = useCallback(
@@ -841,6 +891,40 @@ export function useHealthStore() {
         ...acc,
         profile: { ...acc.profile, preferredWorkoutDaysPerWeek: clamped },
       }));
+    },
+    [updateActiveAccount]
+  );
+
+  const completedWorkoutDays = useMemo(() => {
+    const currentWeek = getCurrentWeekKey();
+    if (
+      activeAccount?.completedWorkoutWeek &&
+      activeAccount.completedWorkoutWeek !== currentWeek
+    ) {
+      return {};
+    }
+    return activeAccount?.completedWorkoutDays ?? {};
+  }, [activeAccount?.completedWorkoutDays, activeAccount?.completedWorkoutWeek]);
+
+  const toggleWorkoutDay = useCallback(
+    (dayName: string) => {
+      const currentWeek = getCurrentWeekKey();
+      updateActiveAccount((acc) => {
+        const isCurrentWeek = acc.completedWorkoutWeek === currentWeek;
+        const currentDays = isCurrentWeek ? (acc.completedWorkoutDays ?? {}) : {};
+        const isChecked = Boolean(currentDays[dayName]);
+        const nextDays = { ...currentDays };
+        if (isChecked) {
+          delete nextDays[dayName];
+        } else {
+          nextDays[dayName] = true;
+        }
+        return {
+          ...acc,
+          completedWorkoutWeek: currentWeek,
+          completedWorkoutDays: nextDays,
+        };
+      });
     },
     [updateActiveAccount]
   );
@@ -1227,6 +1311,8 @@ export function useHealthStore() {
     timelines,
     safetyAlerts,
     weeklySchedule,
+    completedWorkoutDays,
+    toggleWorkoutDay,
     mealPlan,
     foodLogs: activeAccount?.foodLogs ?? [],
     todayFoods,
@@ -1237,6 +1323,7 @@ export function useHealthStore() {
     chatMessages: activeAccount?.chatMessages ?? [],
     dailyTotals,
     gamification,
+    progress,
     saveProfile,
     switchAccount,
     deleteAccount,
