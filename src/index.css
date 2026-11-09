@@ -5,12 +5,12 @@
 @layer base {
   :root {
     color-scheme: light;
-    --surface-bg: #EAF6F0;
-    --surface-card: rgba(255, 255, 255, 0.65);
-    --accent-primary: #226F51;
-    --accent-warm: #B84D28;
-    --ink-main: #16261F;
-    --ink-muted: #3A4F46;
+    --surface-bg: #EDFCF5;
+    --surface-card: rgba(255, 255, 255, 0.78);
+    --accent-primary: #14965C;
+    --accent-warm: #D94B2B;
+    --ink-main: #162921;
+    --ink-muted: #355045;
   }
 
   html {
@@ -18,24 +18,24 @@
     line-height: 1.65;
     -webkit-tap-highlight-color: transparent;
     caret-color: var(--accent-primary);
-    scrollbar-color: rgba(46, 139, 103, 0.35) transparent;
+    scrollbar-color: rgba(20, 150, 92, 0.35) transparent;
   }
 
   body {
     margin: 0;
-    background: linear-gradient(155deg, #E8F6EF 0%, #F7FBF8 46%, #FDF5EE 100%);
+    background: linear-gradient(150deg, #E8FCF3 0%, #FAFDFB 46%, #FFF2EB 100%);
     background-attachment: fixed;
     color: var(--ink-main);
     overflow-x: hidden;
   }
 
   ::selection {
-    background-color: #C7EBDD;
-    color: #103325;
+    background-color: #B9F3D8;
+    color: #0A452B;
   }
 
   :focus-visible {
-    outline: 2px solid #226F51;
+    outline: 2px solid #14965C;
     outline-offset: 2px;
   }
 
@@ -156,100 +156,100 @@
 .glass-dock-indicator {
   background: linear-gradient(
     150deg,
-    rgba(218, 246, 233, 0.92) 0%,
-    rgba(255, 255, 255, 0.78) 100%
+    rgba(205, 249, 228, 0.95) 0%,
+    rgba(255, 255, 255, 0.88) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.96);
   box-shadow:
-    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.98),
-    0 6px 16px -6px rgba(34, 111, 81, 0.24);
+    inset 0 2px 0.5px rgba(255, 255, 255, 0.98),
+    0 6px 16px -6px rgba(20, 150, 92, 0.26);
   transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .glass-card {
   background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.74) 0%,
-    rgba(255, 255, 255, 0.48) 54%,
-    rgba(236, 250, 243, 0.58) 100%
+    150deg,
+    rgba(255, 255, 255, 0.86) 0%,
+    rgba(255, 255, 255, 0.64) 54%,
+    rgba(238, 252, 245, 0.72) 100%
   );
-  backdrop-filter: blur(22px) saturate(185%);
-  -webkit-backdrop-filter: blur(22px) saturate(185%);
-  border: 1px solid rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(22px) saturate(190%);
+  -webkit-backdrop-filter: blur(22px) saturate(190%);
+  border: 1.5px solid rgba(255, 255, 255, 0.92);
   box-shadow:
-    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.92),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.45),
-    0 14px 32px -14px rgba(18, 60, 44, 0.13);
+    inset 0 2px 0.5px rgba(255, 255, 255, 0.96),
+    inset 0 -1.5px 1px rgba(210, 240, 225, 0.45),
+    0 14px 32px -14px rgba(16, 72, 48, 0.11);
 }
 
 .glass-card-mint {
   background: linear-gradient(
     150deg,
-    rgba(224, 247, 237, 0.74) 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(204, 240, 224, 0.62) 100%
+    rgba(222, 251, 238, 0.84) 0%,
+    rgba(255, 255, 255, 0.68) 50%,
+    rgba(212, 244, 255, 0.68) 100%
   );
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(24px) saturate(195%);
+  -webkit-backdrop-filter: blur(24px) saturate(195%);
+  border: 1.5px solid rgba(255, 255, 255, 0.94);
   box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.96),
-    inset 0 -1px 1px rgba(176, 223, 202, 0.48),
-    0 18px 38px -14px rgba(20, 82, 58, 0.16);
+    inset 0 2px 1px rgba(255, 255, 255, 0.98),
+    inset 0 -1.5px 1px rgba(168, 238, 203, 0.52),
+    0 18px 36px -14px rgba(20, 110, 74, 0.14);
 }
 
 .glass-subtle {
   background: linear-gradient(
     145deg,
-    rgba(255, 255, 255, 0.66) 0%,
-    rgba(241, 251, 246, 0.44) 100%
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(244, 252, 248, 0.58) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.76);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.94);
 }
 
 .glass-subtle-active {
   background: linear-gradient(
     145deg,
-    rgba(216, 244, 231, 0.82) 0%,
-    rgba(240, 252, 246, 0.68) 100%
+    rgba(208, 248, 229, 0.88) 0%,
+    rgba(238, 253, 245, 0.78) 100%
   );
-  border: 1px solid rgba(46, 139, 103, 0.55);
+  border: 1.5px solid rgba(29, 185, 116, 0.55);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 6px 16px -8px rgba(34, 111, 81, 0.22);
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.96),
+    0 6px 16px -8px rgba(20, 150, 92, 0.22);
 }
 
 .glass-pill {
   background: linear-gradient(
     145deg,
-    rgba(255, 255, 255, 0.78) 0%,
-    rgba(242, 250, 246, 0.52) 100%
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(244, 252, 248, 0.68) 100%
   );
   backdrop-filter: blur(14px) saturate(175%);
   -webkit-backdrop-filter: blur(14px) saturate(175%);
-  border: 1px solid rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.92);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 4px 12px -4px rgba(18, 58, 42, 0.1);
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.96),
+    0 4px 10px -4px rgba(16, 68, 46, 0.09);
 }
 
 .glass-pill:hover:not(:disabled) {
   background: linear-gradient(
     145deg,
-    rgba(255, 255, 255, 0.9) 0%,
-    rgba(226, 247, 237, 0.7) 100%
+    rgba(255, 255, 255, 0.96) 0%,
+    rgba(220, 250, 236, 0.82) 100%
   );
 }
 
 .glass-input {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(180, 218, 200, 0.75);
+  border: 1.5px solid rgba(168, 230, 202, 0.8);
   box-shadow:
-    inset 0 1.5px 3px rgba(18, 56, 40, 0.04),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.88);
+    inset 0 1.5px 3px rgba(18, 56, 40, 0.03),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.94);
   transition:
     background-color 180ms ease,
     border-color 180ms ease,
@@ -257,39 +257,40 @@
 }
 
 .glass-input:focus {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: #2E8B67;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: #1DB974;
   box-shadow:
-    0 0 0 3px rgba(46, 139, 103, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+    0 0 0 3px rgba(29, 185, 116, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98);
   outline: none;
 }
 
 .glass-btn-primary {
   background: linear-gradient(
-    160deg,
-    rgba(52, 156, 115, 0.95) 0%,
-    rgba(28, 105, 76, 0.98) 100%
+    165deg,
+    #24C47E 0%,
+    #14965C 100%
   );
-  color: #FFFDF9;
-  border: 1px solid rgba(255, 255, 255, 0.36);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.42);
   box-shadow:
-    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.46),
-    inset 0 -1px 1px rgba(10, 48, 34, 0.32),
-    0 10px 22px -8px rgba(28, 105, 76, 0.42);
+    inset 0 2px 0.5px rgba(255, 255, 255, 0.48),
+    inset 0 -2px 0 rgba(10, 82, 49, 0.28),
+    0 8px 18px -6px rgba(20, 150, 92, 0.42);
 }
 
 .glass-btn-warm {
   background: linear-gradient(
-    160deg,
-    rgba(224, 106, 66, 0.95) 0%,
-    rgba(184, 77, 40, 0.98) 100%
+    165deg,
+    #FF7A59 0%,
+    #DF4E2D 100%
   );
-  color: #FFFDF9;
-  border: 1px solid rgba(255, 255, 255, 0.36);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.42);
   box-shadow:
-    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.46),
-    0 10px 22px -8px rgba(184, 77, 40, 0.38);
+    inset 0 2px 0.5px rgba(255, 255, 255, 0.48),
+    inset 0 -2px 0 rgba(132, 36, 14, 0.26),
+    0 8px 18px -6px rgba(223, 78, 45, 0.38);
 }
 
 .glass-btn-danger {
@@ -524,8 +525,98 @@
   animation: listItemEnter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* =========================================================
+   Water Glass Wave & Modern Pastel Bento Surfaces
+   ========================================================= */
+.glass-water-card {
+  background: linear-gradient(
+    145deg,
+    rgba(228, 245, 255, 0.86) 0%,
+    rgba(255, 255, 255, 0.72) 55%,
+    rgba(210, 240, 255, 0.78) 100%
+  );
+  border: 1.5px solid rgba(255, 255, 255, 0.94);
+  box-shadow:
+    inset 0 2px 0.5px rgba(255, 255, 255, 0.98),
+    0 10px 24px -12px rgba(11, 118, 206, 0.16);
+}
+
+.glass-badge-easy {
+  background: linear-gradient(145deg, rgba(220, 252, 236, 0.9) 0%, rgba(255, 255, 255, 0.78) 100%);
+  border: 1.5px solid rgba(29, 185, 116, 0.45);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.95);
+}
+
+.glass-badge-medium {
+  background: linear-gradient(145deg, rgba(219, 240, 255, 0.9) 0%, rgba(255, 255, 255, 0.78) 100%);
+  border: 1.5px solid rgba(25, 148, 245, 0.45);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.95);
+}
+
+.glass-badge-hard {
+  background: linear-gradient(145deg, rgba(255, 232, 222, 0.9) 0%, rgba(255, 255, 255, 0.78) 100%);
+  border: 1.5px solid rgba(242, 100, 68, 0.48);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.95);
+}
+
+.glass-badge-legend {
+  background: linear-gradient(145deg, rgba(254, 242, 199, 0.94) 0%, rgba(255, 235, 242, 0.85) 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.6);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.98),
+    0 6px 16px -8px rgba(245, 158, 11, 0.28);
+}
+
+@keyframes waterWaveSlide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes waterBubbleRise {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.7);
+  }
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1.1);
+  }
+}
+
+.animate-water-wave {
+  animation: waterWaveSlide 3.2s linear infinite;
+}
+
+.animate-water-wave-slow {
+  animation: waterWaveSlide 4.8s linear infinite reverse;
+}
+
+.animate-water-bubble-1 {
+  animation: waterBubbleRise 2.2s ease-in-out infinite;
+}
+
+.animate-water-bubble-2 {
+  animation: waterBubbleRise 2.7s ease-in-out 0.7s infinite;
+}
+
+.animate-water-bubble-3 {
+  animation: waterBubbleRise 2.4s ease-in-out 1.3s infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .liquid-orb {
+  .liquid-orb,
+  .animate-water-wave,
+  .animate-water-wave-slow,
+  .animate-water-bubble-1,
+  .animate-water-bubble-2,
+  .animate-water-bubble-3 {
     animation: none !important;
   }
 }

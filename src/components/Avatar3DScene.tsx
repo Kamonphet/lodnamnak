@@ -4,6 +4,7 @@ import { Pause, Play, RotateCcw } from 'lucide-react';
 import { EXERCISE_CATALOG } from '../domain/exercisePlanner';
 import { interpretBmi } from '../domain/healthCalculator';
 import {
+  AvatarAccessoryId,
   AvatarCustomization,
   ExerciseType,
   Gender,
@@ -25,6 +26,7 @@ interface Avatar3DSceneProps {
   regularExercises?: ExerciseType[];
   customExercises?: string[];
   avatarStyle?: AvatarCustomization;
+  equippedAccessory?: AvatarAccessoryId;
   defaultPose?: AvatarPose;
 }
 
@@ -103,6 +105,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
   regularExercises = [],
   customExercises = [],
   avatarStyle,
+  equippedAccessory = 'none',
   defaultPose = 'idle',
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -180,6 +183,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     resolvedShirtColor,
     resolvedSkinTone,
     resolvedHairColor,
+    equippedAccessory,
   });
   bodyParamsRef.current = {
     blendedBmi,
@@ -191,6 +195,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     resolvedShirtColor,
     resolvedSkinTone,
     resolvedHairColor,
+    equippedAccessory,
   };
 
   const rotationTargetRef = useRef(0.16);
@@ -203,7 +208,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     if (!container) return;
 
     const width = container.clientWidth || 320;
-    const height = container.clientHeight || 275;
+    const height = container.clientHeight || 212;
 
     const scene = new THREE.Scene();
 
@@ -281,6 +286,21 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
       color: 0xb0dfca,
       roughness: 0.6,
     });
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xf4b93b,
+      emissive: 0x5c3c00,
+      emissiveIntensity: 0.2,
+      roughness: 0.26,
+      metalness: 0.62,
+    });
+    const auraMat = new THREE.MeshStandardMaterial({
+      color: 0x3bd69c,
+      emissive: 0x1d9b6c,
+      emissiveIntensity: 0.45,
+      roughness: 0.22,
+      transparent: true,
+      opacity: 0.85,
+    });
 
     const stageGroup = new THREE.Group();
     scene.add(stageGroup);
@@ -304,6 +324,26 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     ring.rotation.x = Math.PI / 2;
     ring.position.y = 0.14;
     stageGroup.add(ring);
+
+    // วงแหวนออร่ามรกต (ปลดล็อกผ่านระบบ Gamification)
+    const auraGroup = new THREE.Group();
+    stageGroup.add(auraGroup);
+
+    const auraRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1.26, 0.022, 16, 56),
+      auraMat
+    );
+    auraRing.rotation.x = Math.PI / 2;
+    auraRing.position.y = 0.19;
+    auraGroup.add(auraRing);
+
+    const auraOrbs: THREE.Mesh[] = [];
+    const auraOrbGeo = new THREE.SphereGeometry(0.042, 12, 12);
+    for (let i = 0; i < 4; i++) {
+      const orb = new THREE.Mesh(auraOrbGeo, auraMat);
+      auraGroup.add(orb);
+      auraOrbs.push(orb);
+    }
 
     // เสาวัดส่วนสูงจำลองด้านข้าง (อยู่คงที่ ไม่หมุนมาบังตัวละคร)
     const rulerGroup = new THREE.Group();
@@ -460,6 +500,46 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     headband.position.y = 0.11;
     headGroup.add(headband);
 
+    const headbandGem = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.052, 0),
+      goldMat
+    );
+    headbandGem.position.set(0, 0.175, 0.375);
+    headGroup.add(headbandGem);
+
+    // มงกุฎแชมเปี้ยน (ปลดล็อกผ่านระบบ Gamification)
+    const crownGroup = new THREE.Group();
+    crownGroup.position.set(0, 0.4, 0.02);
+    crownGroup.rotation.x = -0.08;
+    headGroup.add(crownGroup);
+
+    const crownBand = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.175, 0.16, 0.075, 24),
+      goldMat
+    );
+    crownGroup.add(crownBand);
+
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2;
+      const spike = new THREE.Mesh(
+        new THREE.ConeGeometry(0.044, 0.115, 10),
+        goldMat
+      );
+      spike.position.set(
+        Math.sin(angle) * 0.145,
+        0.085,
+        Math.cos(angle) * 0.145
+      );
+      crownGroup.add(spike);
+    }
+
+    const crownFrontJewel = new THREE.Mesh(
+      new THREE.SphereGeometry(0.032, 12, 12),
+      auraMat
+    );
+    crownFrontJewel.position.set(0, 0.01, 0.172);
+    crownGroup.add(crownFrontJewel);
+
     const ponytail = new THREE.Mesh(
       new THREE.CapsuleGeometry(0.1, 0.22, 10, 16),
       hairMat
@@ -612,7 +692,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     const handleResize = () => {
       if (!mountRef.current) return;
       const w = mountRef.current.clientWidth || 320;
-      const h = mountRef.current.clientHeight || 275;
+      const h = mountRef.current.clientHeight || 212;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -724,6 +804,27 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
       hairTuft.visible = params.gender === 'male';
       neutralBun.visible = params.gender === 'neutral';
 
+      // ไอเทมรางวัล Gamification บนตัวละครและฐานยืน
+      const acc = params.equippedAccessory;
+      const hasGoldBand = acc === 'gold_headband' || acc === 'champion_crown';
+      headband.material = hasGoldBand ? goldMat : propMintMat;
+      headbandGem.visible = acc === 'gold_headband';
+      crownGroup.visible = acc === 'champion_crown';
+
+      const showAura = acc === 'emerald_aura' || acc === 'champion_crown';
+      auraGroup.visible = showAura;
+      if (showAura) {
+        auraRing.position.y = 0.19 + Math.sin(t * 2.6) * 0.03;
+        auraOrbs.forEach((orb, idx) => {
+          const orbAngle = t * 1.35 + (idx * Math.PI) / 2;
+          orb.position.set(
+            Math.cos(orbAngle) * 1.26,
+            0.24 + Math.sin(t * 3 + idx) * 0.045,
+            Math.sin(orbAngle) * 1.26
+          );
+        });
+      }
+
       // อุปกรณ์ตามท่าออกกำลังกาย
       leftArm.dumbbellGroup.visible = activePose === 'dumbbell';
       rightArm.dumbbellGroup.visible = activePose === 'dumbbell';
@@ -809,10 +910,23 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
   const displayOwnerTitle = name?.trim() ? name.trim() : 'หุ่น 3D';
 
   return (
-    <div className="glass-card-mint rounded-3xl p-4">
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div>
-          <h2 className="text-base font-bold text-ink-900">{displayOwnerTitle}</h2>
+    <div className="glass-card-mint rounded-3xl p-3.5">
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="min-w-0">
+          <div className="flex items-center flex-wrap gap-1.5">
+            <h2 className="text-base font-bold text-ink-900 truncate">
+              {displayOwnerTitle}
+            </h2>
+            <span className="rounded-full glass-pill px-2 py-0.5 text-[10px] font-semibold text-ink-900">
+              {GENDER_LABEL[gender]}
+              {hasValidAge ? ` · ${age} ปี` : ''}
+            </span>
+            {bmiInterpretation && (
+              <span className="rounded-full bg-sage-600/15 px-2 py-0.5 text-[10px] font-bold text-sage-900">
+                {bmiInterpretation.category}
+              </span>
+            )}
+          </div>
           {hasRealBodyStats && (
             <p className="text-xs text-ink-700 tabular-data mt-0.5">
               {goalPreviewMix > 0.05
@@ -844,38 +958,21 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
               setGoalPreviewMix(0);
             }}
             aria-label="รีเซ็ตมุมมอง 3D"
-            className="tactile-btn inline-flex items-center gap-1 rounded-full glass-pill px-3 py-1.5 text-xs font-semibold text-sage-700"
+            className="tactile-btn inline-flex items-center gap-1 rounded-full glass-pill px-2.5 py-1.5 text-xs font-semibold text-sage-700"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>รีเซ็ตมุม</span>
+            <span>รีเซ็ต</span>
           </button>
         </div>
       </div>
 
-      {/* ป้ายสรุปข้อมูลเฉพาะบุคคลที่กรอกจริง */}
-      <div className="flex flex-wrap gap-1.5 mb-2 tabular-data">
-        <span className="rounded-full glass-pill px-2.5 py-0.5 text-[11px] font-semibold text-ink-900">
-          {GENDER_LABEL[gender]}
-        </span>
-        {hasValidAge && (
-          <span className="rounded-full glass-pill px-2.5 py-0.5 text-[11px] font-semibold text-ink-900">
-            {age} ปี
-          </span>
-        )}
-        {bmiInterpretation && (
-          <span className="rounded-full bg-sage-600/15 px-2.5 py-0.5 text-[11px] font-bold text-sage-900">
-            {bmiInterpretation.category}
-          </span>
-        )}
-      </div>
-
       <div
         ref={mountRef}
-        className="w-full h-60 touch-pan-y cursor-grab active:cursor-grabbing select-none"
+        className="w-full h-[212px] touch-pan-y cursor-grab active:cursor-grabbing select-none"
         aria-label="โมเดลร่างกาย 3 มิติ"
       />
 
-      <div className="grid grid-cols-4 gap-1.5 mt-2">
+      <div className="grid grid-cols-4 gap-1.5 mt-1.5">
         {poseButtons.map((btn) => {
           const active = pose === btn.id;
           return (
@@ -883,7 +980,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
               key={btn.id + btn.label}
               type="button"
               onClick={() => setPose(btn.id)}
-              className={`tactile-btn py-2 px-1.5 rounded-full text-xs font-semibold truncate ${
+              className={`tactile-btn py-1.5 px-1.5 rounded-full text-xs font-semibold truncate ${
                 active ? 'glass-btn-primary' : 'glass-pill text-ink-900'
               }`}
             >
@@ -894,8 +991,8 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
       </div>
 
       {hasRealBodyStats && Math.abs(effectiveWeightKg - effectiveTargetKg) >= 0.5 && (
-        <div className="mt-3 pt-3 border-t border-white/60">
-          <div className="flex items-center justify-between text-xs font-medium text-ink-700 mb-1.5 tabular-data">
+        <div className="mt-2.5 pt-2.5 border-t border-white/60">
+          <div className="flex items-center justify-between text-xs font-medium text-ink-700 mb-1 tabular-data">
             <span>ปัจจุบัน {effectiveWeightKg} กก.</span>
             <span>เป้าหมาย {effectiveTargetKg} กก.</span>
           </div>

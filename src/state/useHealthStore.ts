@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { processCoachMessage } from '../domain/coachAssistant';
 import {
   createExerciseLogItem,
@@ -17,14 +17,43 @@ import {
   validateProfileInput,
 } from '../domain/healthCalculator';
 import {
+  buildCustomPlateMeal,
+  COOKING_METHOD_OPTIONS,
+  generateDailyMealPlan,
+  MEAL_PATTERNS,
+  PLATE_ADDON_OPTIONS,
+  PLATE_CARBS,
+  PLATE_PROTEINS,
+  PLATE_VEGGIES,
+  swapMealSlotOption,
+  syncMealPlanBudgets,
+} from '../domain/mealPlanner';
+import {
+  createFoodLogFromProduct,
+  createPlannedMealFromProduct,
+  ServingMultiplier,
+} from '../domain/openFoodFacts';
+import {
+  calculateGamificationSummary,
+  VALID_AVATAR_ACCESSORIES,
+} from '../domain/gamification';
+import {
+  AvatarAccessoryId,
   CoachChatMessage,
+  DailyMealPlan,
   ExerciseIntensity,
   ExerciseLogItem,
   ExerciseType,
   FoodLogItem,
+  GamificationSummary,
   Gender,
   HabitAnalysisResult,
+  MealPatternId,
+  NutriScoreGrade,
+  OpenFoodProduct,
   PaceRateKgPerWeek,
+  PlannedMealItem,
+  PlateSelection,
   PrimaryGoal,
   UserAccountRecord,
   UserProfile,
@@ -63,6 +92,7 @@ function createWelcomeMessage(profile: UserProfile): CoachChatMessage {
 
 const MAX_IMPORT_BYTES = 524_288;
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VALID_GENDERS: Gender[] = ['female', 'male', 'neutral'];
 const VALID_GOALS: PrimaryGoal[] = [
   'lose_weight',
@@ -81,6 +111,152 @@ const VALID_ACTIVITY: WeeklyActivityLevel[] = [
 ];
 const VALID_PACES: PaceRateKgPerWeek[] = [0.25, 0.5, 0.75];
 const VALID_INTENSITIES: ExerciseIntensity[] = ['light', 'moderate', 'vigorous'];
+const VALID_CARB_PORTIONS: PlateSelection['carbPortion'][] = [0, 0.5, 1, 1.5, 2];
+const VALID_PROTEIN_PORTIONS: PlateSelection['proteinPortion'][] = [0.5, 1, 1.5, 2];
+const VALID_NUTRI_GRADES: NutriScoreGrade[] = ['a', 'b', 'c', 'd', 'e'];
+
+function sanitizeMealPlan(
+  rawPlan: unknown,
+  profile: UserProfile
+): DailyMealPlan | undefined {
+  if (!rawPlan || typeof rawPlan !== 'object') return undefined;
+  const rp = rawPlan as Partial<DailyMealPlan>;
+  if (
+    typeof rp.pattern !== 'string' ||
+    !Object.prototype.hasOwnProperty.call(MEAL_PATTERNS, rp.pattern)
+  ) {
+    return undefined;
+  }
+
+  const metrics = calculateHealthMetrics(profile);
+  const pattern = rp.pattern as MealPatternId;
+  const expectedSlots = MEAL_PATTERNS[pattern].slots;
+
+  if (!Array.isArray(rp.slots) || rp.slots.length !== expectedSlots.length) {
+    return generateDailyMealPlan(profile, metrics, pattern);
+  }
+
+  const sanitizedDraft: DailyMealPlan = {
+    pattern,
+    slots: expectedSlots.map((slotMeta, idx) => {
+      const rawSlot = rp.slots?.[idx];
+      const optionIndex = Math.round(
+        cleanNonNegativeNumber(rawSlot?.optionIndex, 100, idx)
+      );
+      const rawSel = rawSlot?.selectedMeal?.plateSelection;
+      const isCustom = Boolean(
+        rawSlot?.selectedMeal?.isCustomPlate && rawSel && typeof rawSel === 'object'
+      );
+
+      if (isCustom && rawSel) {
+        const safeSelection: PlateSelection = {
+          carbId: PLATE_CARBS.some((c) => c.id === rawSel.carbId)
+            ? rawSel.carbId
+            : PLATE_CARBS[0].id,
+          carbPortion: VALID_CARB_PORTIONS.includes(rawSel.carbPortion)
+            ? rawSel.carbPortion
+            : 1,
+          proteinId: PLATE_PROTEINS.some((p) => p.id === rawSel.proteinId)
+            ? rawSel.proteinId
+            : PLATE_PROTEINS[0].id,
+          proteinPortion: VALID_PROTEIN_PORTIONS.includes(rawSel.proteinPortion)
+            ? rawSel.proteinPortion
+            : 1,
+          veggieId: PLATE_VEGGIES.some((v) => v.id === rawSel.veggieId)
+            ? rawSel.veggieId
+            : PLATE_VEGGIES[0].id,
+          cookingMethodId: COOKING_METHOD_OPTIONS.some(
+            (m) => m.id === rawSel.cookingMethodId
+          )
+            ? rawSel.cookingMethodId
+            : COOKING_METHOD_OPTIONS[0].id,
+          addonId: PLATE_ADDON_OPTIONS.some((a) => a.id === rawSel.addonId)
+            ? rawSel.addonId
+            : 'none',
+        };
+
+        return {
+          slotId: slotMeta.slotId,
+          slotLabel: slotMeta.slotLabel,
+          shareRatio: slotMeta.shareRatio,
+          targetCalories: 0,
+          targetProteinGrams: 0,
+          targetCarbsGrams: 0,
+          targetFatGrams: 0,
+          optionIndex,
+          selectedMeal: buildCustomPlateMeal(safeSelection),
+        };
+      }
+
+      if (
+        rawSlot?.selectedMeal?.isVerifiedLabel &&
+        typeof rawSlot.selectedMeal.title === 'string' &&
+        rawSlot.selectedMeal.title.trim()
+      ) {
+        const rawGrade = cleanText(rawSlot.selectedMeal.nutriScore, 4).toLowerCase();
+        const nutriScore = VALID_NUTRI_GRADES.includes(rawGrade as NutriScoreGrade)
+          ? (rawGrade as NutriScoreGrade)
+          : undefined;
+        return {
+          slotId: slotMeta.slotId,
+          slotLabel: slotMeta.slotLabel,
+          shareRatio: slotMeta.shareRatio,
+          targetCalories: 0,
+          targetProteinGrams: 0,
+          targetCarbsGrams: 0,
+          targetFatGrams: 0,
+          optionIndex,
+          selectedMeal: {
+            title: cleanText(rawSlot.selectedMeal.title, 140, 'สินค้าฉลากจริง'),
+            portionDesc: cleanText(
+              rawSlot.selectedMeal.portionDesc,
+              120,
+              'ฉลากจริง · 1 หน่วยบริโภค'
+            ),
+            calories: cleanNonNegativeNumber(rawSlot.selectedMeal.calories, 5000, 0),
+            proteinGrams: cleanNonNegativeNumber(
+              rawSlot.selectedMeal.proteinGrams,
+              500,
+              0
+            ),
+            carbsGrams: cleanNonNegativeNumber(
+              rawSlot.selectedMeal.carbsGrams,
+              800,
+              0
+            ),
+            fatGrams: cleanNonNegativeNumber(rawSlot.selectedMeal.fatGrams, 500, 0),
+            isCustomPlate: false,
+            isVerifiedLabel: true,
+            productCode: cleanText(rawSlot.selectedMeal.productCode, 24),
+            ...(nutriScore ? { nutriScore } : {}),
+          },
+        };
+      }
+
+      return {
+        slotId: slotMeta.slotId,
+        slotLabel: slotMeta.slotLabel,
+        shareRatio: slotMeta.shareRatio,
+        targetCalories: 0,
+        targetProteinGrams: 0,
+        targetCarbsGrams: 0,
+        targetFatGrams: 0,
+        optionIndex,
+        selectedMeal: {
+          title: '',
+          portionDesc: '',
+          calories: 0,
+          proteinGrams: 0,
+          carbsGrams: 0,
+          fatGrams: 0,
+          isCustomPlate: false,
+        },
+      };
+    }),
+  };
+
+  return syncMealPlanBudgets(sanitizedDraft, profile, metrics);
+}
 
 function safeJsonParse(raw: string): unknown {
   return JSON.parse(raw, (key, value) => {
@@ -190,6 +366,11 @@ export function sanitizeAccountRecord(
           ? rp.avatarStyle.hairColor
           : undefined,
     },
+    equippedAccessory: VALID_AVATAR_ACCESSORIES.includes(
+      rp.equippedAccessory as AvatarAccessoryId
+    )
+      ? rp.equippedAccessory
+      : 'none',
   };
 
   if (validateProfileInput(candidateProfile).length > 0) {
@@ -304,6 +485,28 @@ export function sanitizeAccountRecord(
         }))
     : [];
 
+  const mealPlan = sanitizeMealPlan(raw.mealPlan, candidateProfile);
+
+  let waterLogs: Record<string, number> | undefined;
+  if (
+    raw.waterLogs &&
+    typeof raw.waterLogs === 'object' &&
+    !Array.isArray(raw.waterLogs)
+  ) {
+    const safeWater: Record<string, number> = {};
+    for (const [k, v] of Object.entries(raw.waterLogs).slice(0, 366)) {
+      if (DATE_KEY_RE.test(k)) {
+        const glasses = Math.round(cleanNonNegativeNumber(v, 30, 0));
+        if (glasses > 0) {
+          safeWater[k] = glasses;
+        }
+      }
+    }
+    if (Object.keys(safeWater).length > 0) {
+      waterLogs = safeWater;
+    }
+  }
+
   return {
     id,
     profile: { ...candidateProfile, id },
@@ -312,6 +515,8 @@ export function sanitizeAccountRecord(
     weightHistory,
     habitAnalyses,
     chatMessages,
+    ...(mealPlan ? { mealPlan } : {}),
+    ...(waterLogs ? { waterLogs } : {}),
   };
 }
 
@@ -360,6 +565,7 @@ function loadInitialMultiState(): MultiAccountState {
 
 export function useHealthStore() {
   const [state, setState] = useState<MultiAccountState>(() => loadInitialMultiState());
+  const mealSeedRef = useRef(1);
 
   useEffect(() => {
     try {
@@ -400,6 +606,11 @@ export function useHealthStore() {
     return generateWeeklySchedule(profile);
   }, [profile]);
 
+  const mealPlan = useMemo(() => {
+    if (!profile || !metrics) return null;
+    return syncMealPlanBudgets(activeAccount?.mealPlan, profile, metrics);
+  }, [activeAccount?.mealPlan, profile, metrics]);
+
   const currentDayKey = todayKey();
 
   const todayFoods = useMemo(
@@ -437,6 +648,25 @@ export function useHealthStore() {
     };
   }, [todayFoods, todayExercises, metrics]);
 
+  const gamification: GamificationSummary | null = useMemo(() => {
+    if (!metrics) return null;
+    return calculateGamificationSummary({
+      metrics,
+      foodLogs: activeAccount?.foodLogs ?? [],
+      exerciseLogs: activeAccount?.exerciseLogs ?? [],
+      weightHistory: activeAccount?.weightHistory ?? [],
+      waterLogs: activeAccount?.waterLogs,
+      referenceDateKey: currentDayKey,
+    });
+  }, [
+    metrics,
+    activeAccount?.foodLogs,
+    activeAccount?.exerciseLogs,
+    activeAccount?.weightHistory,
+    activeAccount?.waterLogs,
+    currentDayKey,
+  ]);
+
   const updateActiveAccount = useCallback(
     (updater: (acc: UserAccountRecord) => UserAccountRecord) => {
       setState((prev) => {
@@ -468,14 +698,30 @@ export function useHealthStore() {
       if (isEditingExisting) {
         return {
           ...prev,
-          accounts: prev.accounts.map((acc) =>
-            acc.id === prev.activeAccountId
-              ? {
-                  ...acc,
-                  profile: { ...newProfile, id: acc.id },
-                }
-              : acc
-          ),
+          accounts: prev.accounts.map((acc) => {
+            if (acc.id !== prev.activeAccountId) return acc;
+            const dietChanged =
+              acc.profile.dietaryRestrictions !== newProfile.dietaryRestrictions;
+            const updatedProfile: UserProfile = {
+              ...newProfile,
+              id: acc.id,
+              equippedAccessory:
+                newProfile.equippedAccessory ??
+                acc.profile.equippedAccessory ??
+                'none',
+            };
+            return {
+              ...acc,
+              profile: updatedProfile,
+              mealPlan: dietChanged
+                ? generateDailyMealPlan(
+                    updatedProfile,
+                    newMetrics,
+                    acc.mealPlan?.pattern
+                  )
+                : acc.mealPlan,
+            };
+          }),
         };
       }
 
@@ -484,6 +730,7 @@ export function useHealthStore() {
         ...newProfile,
         id: newId,
         name: newProfile.name?.trim() || `ผู้ใช้งาน ${prev.accounts.length + 1}`,
+        equippedAccessory: newProfile.equippedAccessory ?? 'none',
       };
 
       const initialCheckIn: WeightCheckIn = {
@@ -598,6 +845,45 @@ export function useHealthStore() {
     [updateActiveAccount]
   );
 
+  const adjustTodayWater = useCallback(
+    (delta: number) => {
+      if (!Number.isFinite(delta) || delta === 0) return;
+      const key = todayKey();
+      updateActiveAccount((acc) => {
+        const prevGlasses = acc.waterLogs?.[key] ?? 0;
+        const nextGlasses = Math.max(
+          0,
+          Math.min(20, Math.round(prevGlasses + delta))
+        );
+        const nextWaterLogs = { ...(acc.waterLogs ?? {}) };
+        if (nextGlasses <= 0) {
+          delete nextWaterLogs[key];
+        } else {
+          nextWaterLogs[key] = nextGlasses;
+        }
+        return {
+          ...acc,
+          waterLogs: nextWaterLogs,
+        };
+      });
+    },
+    [updateActiveAccount]
+  );
+
+  const equipAvatarAccessory = useCallback(
+    (accessoryId: AvatarAccessoryId) => {
+      if (!VALID_AVATAR_ACCESSORIES.includes(accessoryId)) return;
+      updateActiveAccount((acc) => ({
+        ...acc,
+        profile: {
+          ...acc.profile,
+          equippedAccessory: accessoryId,
+        },
+      }));
+    },
+    [updateActiveAccount]
+  );
+
   const addFoodByText = useCallback(
     (rawText: string) => {
       const items = parseThaiFoodInput(rawText, todayKey());
@@ -647,6 +933,130 @@ export function useHealthStore() {
         habitAnalyses: [result, ...acc.habitAnalyses.slice(0, 9)],
       }));
       return result;
+    },
+    [updateActiveAccount]
+  );
+
+  const setMealPattern = useCallback(
+    (pattern: MealPatternId) => {
+      updateActiveAccount((acc) => {
+        const currentMetrics = calculateHealthMetrics(acc.profile);
+        return {
+          ...acc,
+          mealPlan: generateDailyMealPlan(acc.profile, currentMetrics, pattern),
+        };
+      });
+    },
+    [updateActiveAccount]
+  );
+
+  const regenerateMealPlan = useCallback(() => {
+    mealSeedRef.current += 1;
+    const nextSeed = mealSeedRef.current;
+    updateActiveAccount((acc) => {
+      const currentMetrics = calculateHealthMetrics(acc.profile);
+      return {
+        ...acc,
+        mealPlan: generateDailyMealPlan(
+          acc.profile,
+          currentMetrics,
+          acc.mealPlan?.pattern,
+          nextSeed
+        ),
+      };
+    });
+  }, [updateActiveAccount]);
+
+  const swapMealSlot = useCallback(
+    (slotIndex: number) => {
+      updateActiveAccount((acc) => {
+        const currentMetrics = calculateHealthMetrics(acc.profile);
+        const synced = syncMealPlanBudgets(acc.mealPlan, acc.profile, currentMetrics);
+        return {
+          ...acc,
+          mealPlan: swapMealSlotOption(synced, slotIndex, acc.profile),
+        };
+      });
+    },
+    [updateActiveAccount]
+  );
+
+  const applyCustomPlateToSlot = useCallback(
+    (slotIndex: number, selection: PlateSelection) => {
+      updateActiveAccount((acc) => {
+        const currentMetrics = calculateHealthMetrics(acc.profile);
+        const synced = syncMealPlanBudgets(acc.mealPlan, acc.profile, currentMetrics);
+        const customMeal = buildCustomPlateMeal(selection);
+        return {
+          ...acc,
+          mealPlan: {
+            ...synced,
+            slots: synced.slots.map((slot, idx) =>
+              idx === slotIndex ? { ...slot, selectedMeal: customMeal } : slot
+            ),
+          },
+        };
+      });
+    },
+    [updateActiveAccount]
+  );
+
+  const addProductFood = useCallback(
+    (product: OpenFoodProduct, multiplier: ServingMultiplier = 1) => {
+      const item = createFoodLogFromProduct(product, multiplier, todayKey());
+      updateActiveAccount((acc) => ({
+        ...acc,
+        foodLogs: [item, ...acc.foodLogs],
+      }));
+      return item;
+    },
+    [updateActiveAccount]
+  );
+
+  const applyProductToMealSlot = useCallback(
+    (
+      slotIndex: number,
+      product: OpenFoodProduct,
+      multiplier: ServingMultiplier = 1
+    ) => {
+      updateActiveAccount((acc) => {
+        const currentMetrics = calculateHealthMetrics(acc.profile);
+        const synced = syncMealPlanBudgets(acc.mealPlan, acc.profile, currentMetrics);
+        const productMeal = createPlannedMealFromProduct(product, multiplier);
+        return {
+          ...acc,
+          mealPlan: {
+            ...synced,
+            slots: synced.slots.map((slot, idx) =>
+              idx === slotIndex ? { ...slot, selectedMeal: productMeal } : slot
+            ),
+          },
+        };
+      });
+    },
+    [updateActiveAccount]
+  );
+
+  const logPlannedMeal = useCallback(
+    (meal: PlannedMealItem, slotLabel: string) => {
+      const item: FoodLogItem = {
+        id: `food-plan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        dateKey: todayKey(),
+        rawInput: `${slotLabel}: ${meal.title}`,
+        normalizedName: meal.title,
+        portionNote: `${slotLabel} · ${meal.portionDesc}`,
+        calories: Math.max(0, Math.round(meal.calories)),
+        proteinGrams: Math.max(0, Math.round(meal.proteinGrams)),
+        carbsGrams: Math.max(0, Math.round(meal.carbsGrams)),
+        fatGrams: Math.max(0, Math.round(meal.fatGrams)),
+        isEstimated: !meal.isVerifiedLabel,
+      };
+      updateActiveAccount((acc) => ({
+        ...acc,
+        foodLogs: [item, ...acc.foodLogs],
+      }));
+      return item;
     },
     [updateActiveAccount]
   );
@@ -817,6 +1227,7 @@ export function useHealthStore() {
     timelines,
     safetyAlerts,
     weeklySchedule,
+    mealPlan,
     foodLogs: activeAccount?.foodLogs ?? [],
     todayFoods,
     exerciseLogs: activeAccount?.exerciseLogs ?? [],
@@ -825,6 +1236,7 @@ export function useHealthStore() {
     habitAnalyses: activeAccount?.habitAnalyses ?? [],
     chatMessages: activeAccount?.chatMessages ?? [],
     dailyTotals,
+    gamification,
     saveProfile,
     switchAccount,
     deleteAccount,
@@ -832,10 +1244,19 @@ export function useHealthStore() {
     importAccountJson,
     selectPace,
     updatePreferredWorkoutDays,
+    adjustTodayWater,
+    equipAvatarAccessory,
     addFoodByText,
     addCustomFood,
+    addProductFood,
     removeFoodLog,
     addHabitAnalysis,
+    setMealPattern,
+    regenerateMealPlan,
+    swapMealSlot,
+    applyCustomPlateToSlot,
+    applyProductToMealSlot,
+    logPlannedMeal,
     addExerciseLog,
     removeExerciseLog,
     reportNewWeight,

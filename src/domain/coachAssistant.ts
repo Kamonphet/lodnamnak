@@ -14,6 +14,7 @@ import {
   calculateHealthMetrics,
   validateProfileInput,
 } from './healthCalculator';
+import { formatMealPlanChatReply } from './mealPlanner';
 import {
   ExerciseLogItem,
   ExerciseType,
@@ -39,6 +40,9 @@ const UNSAFE_METHOD_REGEX =
 
 const WEIGHT_REPORT_REGEX =
   /(?:วันนี้หนัก|ตอนนี้หนัก|ชั่งน้ำหนักได้|น้ำหนักวันนี้|น้ำหนักเหลือ|น้ำหนักขึ้นมา|หนัก)\s*(-?\d+(?:\.\d+)?)\s*(?:กก\.?|กิโลกรัม|กิโล|โล|kg)?/i;
+
+const MEAL_PLAN_QUERY_REGEX =
+  /ออกแบบมื้อ|ตารางอาหาร|แผนอาหาร|แผนการกิน|จัดมื้อ(?!.*เทคนิค)|แต่ละมื้อ|(?:มื้อเช้า|มื้อเที่ยง|มื้อกลางวัน|มื้อเย็น|มื้อค่ำ|เช้านี้|เที่ยงนี้|เย็นนี้).*กินอะไร|กินอะไรดี.*(?:เช้า|เที่ยง|กลางวัน|เย็น|ค่ำ)/i;
 
 export function buildContextualCoachSuggestions(profile: UserProfile): string[] {
   const meals = getPersonalizedMealSuggestions(
@@ -70,7 +74,7 @@ export function buildContextualCoachSuggestions(profile: UserProfile): string[] 
     `ส่วนใหญ่กิน${sampleHabitMeal}ทุกวัน`,
     sportPhrase,
     `วันนี้หนัก ${sampleNextWeight} กก.`,
-    'ขอเทคนิคจัดมื้ออาหารให้ทำได้ต่อเนื่อง',
+    'ออกแบบมื้ออาหารวันนี้ให้หน่อย',
   ];
 }
 
@@ -199,8 +203,16 @@ export function processCoachMessage(
     };
   }
 
-  // 5. คำถามขอเทคนิคหรือกำลังใจ
-  if (/เทคนิค|คำแนะนำ|จัดมื้อ|เริ่มยังไง/.test(normalizedDigits)) {
+  // 5. ระบบออกแบบมื้ออาหารตามงบพลังงานและข้อจำกัดเฉพาะบุคคล
+  if (MEAL_PLAN_QUERY_REGEX.test(normalizedDigits)) {
+    return {
+      badge: 'ออกแบบมื้ออาหาร',
+      replyText: formatMealPlanChatReply(profile, currentMetrics, normalizedDigits),
+    };
+  }
+
+  // 6. คำถามขอเทคนิคหรือกำลังใจ
+  if (/เทคนิค|คำแนะนำ|เริ่มยังไง/.test(normalizedDigits)) {
     const restrictionNote =
       profile.dietaryRestrictions && profile.dietaryRestrictions !== 'ไม่มี'
         ? `\n• สำหรับข้อจำกัด "${profile.dietaryRestrictions}" แนะนำเลือกแหล่งโปรตีนที่ทานได้สลับกันให้ครบ ${currentMetrics.proteinRangeGrams.min}–${currentMetrics.proteinRangeGrams.max} กรัม/วันครับ`

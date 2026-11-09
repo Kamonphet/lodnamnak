@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { CalendarDays, Check, Dumbbell, Flame, Plus, Trash2 } from 'lucide-react';
+import {
+  Bike,
+  CalendarDays,
+  Check,
+  Dumbbell,
+  Flame,
+  Footprints,
+  Heart,
+  Plus,
+  Sparkles,
+  Swords,
+  Trash2,
+} from 'lucide-react';
 import {
   calculateExerciseBurn,
   EXERCISE_CATALOG,
@@ -29,6 +41,44 @@ interface WorkoutPlanTabProps {
   onUpdateWorkoutDays: (days: number) => void;
   onNotify?: (toast: Omit<ToastMessage, 'id'>) => void;
   onRequestConfirm?: (dialog: ConfirmDialogState) => void;
+}
+
+function getExerciseVisual(type: ExerciseType, label?: string) {
+  const text = (label || type).toLowerCase();
+  if (type === 'running' || /วิ่ง|run/.test(text)) {
+    return {
+      icon: <Footprints className="w-4 h-4" />,
+      bg: 'bg-peach-100 text-peach-600',
+    };
+  }
+  if (type === 'cycling' || /จักรยาน|ปั่น|bike|cycle/.test(text)) {
+    return {
+      icon: <Bike className="w-4 h-4" />,
+      bg: 'bg-sky-100 text-sky-600',
+    };
+  }
+  if (type === 'muay_thai' || /มวย|ชก|เตะ/.test(text)) {
+    return {
+      icon: <Swords className="w-4 h-4" />,
+      bg: 'bg-berry-100 text-berry-600',
+    };
+  }
+  if (type === 'yoga' || /โยคะ|ยืด/.test(text)) {
+    return {
+      icon: <Heart className="w-4 h-4" />,
+      bg: 'bg-sage-100 text-sage-600',
+    };
+  }
+  if (type === 'hiit' || /กระโดด|เชือก|hiit/.test(text)) {
+    return {
+      icon: <Sparkles className="w-4 h-4" />,
+      bg: 'bg-sunny-100 text-sunny-600',
+    };
+  }
+  return {
+    icon: <Dumbbell className="w-4 h-4" />,
+    bg: 'bg-sage-100 text-sage-600',
+  };
 }
 
 export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
@@ -243,29 +293,39 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
 
         {todayExercises.length > 0 && (
           <div className="pt-2 border-t border-white/60 divide-y divide-white/60">
-            {todayExercises.map((ex) => (
-              <div
-                key={ex.id}
-                className="py-2.5 flex items-center justify-between gap-2 text-xs animate-list-item"
-              >
-                <span className="font-bold text-ink-900">
-                  {ex.exerciseLabel} · {ex.durationMinutes} นาที ({INTENSITY_LABELS[ex.intensity]})
-                </span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-bold text-sage-700 tabular-data">
-                    ~{ex.burnedCalories} kcal
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => requestDeleteExercise(ex)}
-                    aria-label={`ลบ ${ex.exerciseLabel}`}
-                    className="tactile-btn p-1.5 rounded-xl glass-pill text-ink-500 hover:text-berry-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {todayExercises.map((ex) => {
+              const visual = getExerciseVisual(ex.exerciseType, ex.exerciseLabel);
+              return (
+                <div
+                  key={ex.id}
+                  className="py-2.5 flex items-center justify-between gap-2.5 text-xs animate-list-item"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-7 h-7 rounded-xl inline-flex items-center justify-center shrink-0 ${visual.bg}`}
+                    >
+                      {visual.icon}
+                    </span>
+                    <span className="font-bold text-ink-900 truncate">
+                      {ex.exerciseLabel} · {ex.durationMinutes} นาที ({INTENSITY_LABELS[ex.intensity]})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="rounded-full bg-peach-100 px-2 py-0.5 font-bold text-peach-600 tabular-data">
+                      ~{ex.burnedCalories} kcal
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => requestDeleteExercise(ex)}
+                      aria-label={`ลบ ${ex.exerciseLabel}`}
+                      className="tactile-btn p-1.5 rounded-xl glass-pill text-ink-500 hover:text-berry-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -353,15 +413,22 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                   </div>
                 </div>
 
-                <div className="pl-10 space-y-1">
-                  {day.sessions.map((sess, i) => (
-                    <div key={i} className="flex items-center gap-1.5 text-xs text-ink-900">
-                      <Dumbbell className="w-3.5 h-3.5 text-sage-600 shrink-0" />
-                      <span className="font-medium">
-                        {sess.title} · {sess.durationMinutes} นาที ({sess.intensityLabel})
-                      </span>
-                    </div>
-                  ))}
+                <div className="pl-10 space-y-1.5">
+                  {day.sessions.map((sess, i) => {
+                    const visual = getExerciseVisual(sess.exerciseType ?? 'walking', sess.title);
+                    return (
+                      <div key={i} className="flex items-center gap-2 text-xs text-ink-900">
+                        <span
+                          className={`w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0 ${visual.bg}`}
+                        >
+                          {visual.icon}
+                        </span>
+                        <span className="font-medium truncate">
+                          {sess.title} · {sess.durationMinutes} นาที ({sess.intensityLabel})
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );

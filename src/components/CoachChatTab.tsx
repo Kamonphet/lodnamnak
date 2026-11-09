@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Send, ShieldAlert, Sparkles } from 'lucide-react';
+import { Bot, Send, ShieldAlert, Sparkles, User } from 'lucide-react';
 import { buildContextualCoachSuggestions } from '../domain/coachAssistant';
 import { CoachChatMessage, UserProfile } from '../domain/types';
 
@@ -42,18 +42,24 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({
           const isUser = msg.sender === 'user';
           if (isUser) {
             return (
-              <div key={msg.id} className="flex justify-end animate-list-item">
-                <div className="max-w-[82%] rounded-2xl rounded-br-sm glass-btn-primary px-3.5 py-2.5 text-sm leading-relaxed">
+              <div key={msg.id} className="flex justify-end gap-2 animate-list-item">
+                <div className="max-w-[82%] rounded-3xl rounded-br-md glass-btn-primary px-3.5 py-2.5 text-sm leading-relaxed">
                   {msg.text}
                 </div>
+                <span className="w-7 h-7 rounded-full bg-peach-100 text-peach-600 inline-flex items-center justify-center shrink-0 self-end">
+                  <User className="w-3.5 h-3.5" />
+                </span>
               </div>
             );
           }
 
           return (
-            <div key={msg.id} className="flex justify-start animate-list-item">
+            <div key={msg.id} className="flex justify-start gap-2 animate-list-item">
+              <span className="w-7 h-7 rounded-full bg-sage-100 text-sage-600 inline-flex items-center justify-center shrink-0 self-start mt-0.5">
+                <Bot className="w-4 h-4" />
+              </span>
               <div
-                className={`max-w-[90%] rounded-2xl rounded-bl-sm p-3.5 text-sm leading-relaxed space-y-1.5 ${
+                className={`max-w-[85%] rounded-3xl rounded-tl-md p-3.5 text-sm leading-relaxed space-y-1.5 ${
                   msg.safetyTriggered
                     ? 'glass-alert-critical text-berry-800'
                     : 'glass-subtle text-ink-900'

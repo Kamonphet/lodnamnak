@@ -1,14 +1,47 @@
-import React, { useMemo, useState } from 'react';
-import { Check, Lightbulb, Plus, SlidersHorizontal, Trash2, Utensils } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  Check,
+  ChefHat,
+  Lightbulb,
+  Loader2,
+  Plus,
+  ScanBarcode,
+  SlidersHorizontal,
+  Trash2,
+  Utensils,
+  X,
+} from 'lucide-react';
 import { getPersonalizedMealSuggestions } from '../domain/foodAnalyzer';
-import { FoodLogItem, HabitAnalysisResult, UserProfile } from '../domain/types';
+import {
+  checkProductDietaryConflict,
+  lookupOpenFoodFactsBarcode,
+  scaleOpenFoodProduct,
+  searchLocalOffCatalog,
+  searchOpenFoodFacts,
+  ServingMultiplier,
+} from '../domain/openFoodFacts';
+import {
+  DailyMealPlan,
+  FoodLogItem,
+  HabitAnalysisResult,
+  MealPatternId,
+  OpenFoodProduct,
+  PlannedMealItem,
+  PlateSelection,
+  UserProfile,
+} from '../domain/types';
+import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { ConfirmDialogState } from './ConfirmDialog';
 import { ToastMessage } from './LiquidToast';
+import { MealDesignerPanel } from './MealDesignerPanel';
+import { FoodCategoryThumbnail, MacroPillBar } from './NutritionVisuals';
 
 interface FoodTrackerTabProps {
   profile: UserProfile;
   todayFoods: FoodLogItem[];
   habitAnalyses: HabitAnalysisResult[];
+  mealPlan: DailyMealPlan;
   dailyTotals: {
     targetCalories: number;
     consumedCalories: number;
@@ -28,30 +61,70 @@ interface FoodTrackerTabProps {
     carbsGrams: number;
     fatGrams: number;
   }) => FoodLogItem;
+  onAddProductFood: (
+    product: OpenFoodProduct,
+    multiplier: ServingMultiplier
+  ) => FoodLogItem;
   onRemoveFood: (id: string) => void;
   onAnalyzeHabit: (rawText: string) => HabitAnalysisResult;
+  onSelectMealPattern: (pattern: MealPatternId) => void;
+  onRegenerateMealPlan: () => void;
+  onSwapMealSlot: (slotIndex: number) => void;
+  onApplyCustomPlate: (slotIndex: number, selection: PlateSelection) => void;
+  onApplyProductToSlot: (
+    slotIndex: number,
+    product: OpenFoodProduct,
+    multiplier: ServingMultiplier
+  ) => void;
+  onLogPlannedMeal: (meal: PlannedMealItem, slotLabel: string) => FoodLogItem;
   onNotify?: (toast: Omit<ToastMessage, 'id'>) => void;
   onRequestConfirm?: (dialog: ConfirmDialogState) => void;
 }
+
+const MULTIPLIERS: ServingMultiplier[] = [0.5, 1, 1.5, 2];
+
+const NUTRI_BADGE_CLASS: Record<string, string> = {
+  a: 'bg-sage-600/18 text-sage-900',
+  b: 'bg-sage-600/12 text-sage-800',
+  c: 'bg-peach-500/18 text-peach-900',
+  d: 'bg-peach-600/22 text-peach-900',
+  e: 'bg-berry-600/20 text-berry-800',
+};
 
 export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
   profile,
   todayFoods,
   habitAnalyses,
+  mealPlan,
   dailyTotals,
   targetCarbsGrams,
   targetFatGrams,
   onAddFoodText,
   onAddCustomFood,
+  onAddProductFood,
   onRemoveFood,
   onAnalyzeHabit,
+  onSelectMealPattern,
+  onRegenerateMealPlan,
+  onSwapMealSlot,
+  onApplyCustomPlate,
+  onApplyProductToSlot,
+  onLogPlannedMeal,
   onNotify,
   onRequestConfirm,
 }) => {
+  const [subView, setSubView] = useState<'log' | 'designer'>('log');
   const [mode, setMode] = useState<'natural' | 'manual'>('natural');
   const [foodInput, setFoodInput] = useState('');
   const [habitInput, setHabitInput] = useState('');
   const [justAdded, setJustAdded] = useState(false);
+
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [offMatches, setOffMatches] = useState<OpenFoodProduct[]>([]);
+  const [isOffSearching, setIsOffSearching] = useState(false);
+  const [offMultipliers, setOffMultipliers] = useState<
+    Record<string, ServingMultiplier>
+  >({});
 
   const [customName, setCustomName] = useState('');
   const [customKcal, setCustomKcal] = useState('');
@@ -68,9 +141,67 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
     [profile.dietaryRestrictions, profile.primaryGoal]
   );
 
+  useEffect(() => {
+    const trimmed = foodInput.trim();
+    if (trimmed.length < 2) {
+      setOffMatches([]);
+      setIsOffSearching(false);
+      return;
+    }
+
+    setOffMatches(searchLocalOffCatalog(trimmed).slice(0, 4));
+    setIsOffSearching(true);
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      const res = await searchOpenFoodFacts(trimmed);
+      if (!active) return;
+      setOffMatches(res.products.slice(0, 4));
+      setIsOffSearching(false);
+    }, 320);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [foodInput]);
+
   const flashAddedState = () => {
     setJustAdded(true);
     window.setTimeout(() => setJustAdded(false), 1000);
+  };
+
+  const handleSelectOffProduct = (
+    product: OpenFoodProduct,
+    mult: ServingMultiplier = 1
+  ) => {
+    const added = onAddProductFood(product, mult);
+    flashAddedState();
+    setFoodInput('');
+    setOffMatches([]);
+    onNotify?.({
+      title: `บันทึก ${added.normalizedName}`,
+      detail: `+${added.calories} kcal · P ${added.proteinGrams}g`,
+      tone: 'success',
+    });
+  };
+
+  const handleBarcodeDetected = async (barcode: string) => {
+    setScannerOpen(false);
+    setFoodInput(barcode);
+    setIsOffSearching(true);
+    const res = await lookupOpenFoodFactsBarcode(barcode);
+    setIsOffSearching(false);
+    if (res.product) {
+      setOffMatches([res.product]);
+    } else {
+      setOffMatches([]);
+      onNotify?.({
+        title: 'ไม่พบบาร์โค้ดนี้ใน Open Food Facts',
+        detail: barcode,
+        tone: 'warning',
+      });
+    }
   };
 
   const logFoodWithToast = (raw: string) => {
@@ -88,9 +219,16 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
 
   const handleFoodSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!foodInput.trim()) return;
-    logFoodWithToast(foodInput);
+    const trimmed = foodInput.trim();
+    if (!trimmed) return;
+    if (/^\d{8,14}$/.test(trimmed.replace(/[\s-]/g, '')) && offMatches[0]) {
+      const code = offMatches[0].code;
+      handleSelectOffProduct(offMatches[0], offMultipliers[code] ?? 1);
+      return;
+    }
+    logFoodWithToast(trimmed);
     setFoodInput('');
+    setOffMatches([]);
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -173,94 +311,294 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
 
         <div className="grid grid-cols-4 gap-2 text-center tabular-data pt-1">
           <div className="rounded-2xl glass-subtle p-2">
-            <span className="block text-[11px] text-ink-700">กินแล้ว</span>
-            <span className="block text-sm font-bold text-ink-900">
+            <span className="block text-[11px] font-semibold text-ink-700">กินแล้ว</span>
+            <span className="block text-sm font-bold text-sage-600">
               {dailyTotals.consumedCalories.toLocaleString()}
             </span>
             <span className="block text-[10px] text-ink-700">kcal</span>
           </div>
-          <div className="rounded-2xl glass-subtle-active p-2">
-            <span className="block text-[11px] text-sage-900">โปรตีน</span>
-            <span className="block text-sm font-bold text-sage-700">
+          <div className="rounded-2xl glass-badge-hard p-2">
+            <span className="block text-[11px] font-semibold text-peach-800">โปรตีน</span>
+            <span className="block text-sm font-bold text-peach-600">
               {dailyTotals.consumedProtein}/{dailyTotals.targetProtein}
             </span>
-            <span className="block text-[10px] text-sage-900">g</span>
+            <span className="block text-[10px] text-peach-800">g</span>
           </div>
-          <div className="rounded-2xl glass-subtle p-2">
-            <span className="block text-[11px] text-ink-700">คาร์บ</span>
-            <span className="block text-sm font-bold text-ink-900">
+          <div className="rounded-2xl glass-badge-legend p-2">
+            <span className="block text-[11px] font-semibold text-sunny-800">คาร์บ</span>
+            <span className="block text-sm font-bold text-sunny-600">
               {dailyTotals.consumedCarbs}/{targetCarbsGrams}
             </span>
-            <span className="block text-[10px] text-ink-700">g</span>
+            <span className="block text-[10px] text-sunny-800">g</span>
           </div>
-          <div className="rounded-2xl glass-subtle p-2">
-            <span className="block text-[11px] text-ink-700">ไขมัน</span>
-            <span className="block text-sm font-bold text-ink-900">
+          <div className="rounded-2xl glass-badge-medium p-2">
+            <span className="block text-[11px] font-semibold text-sky-800">ไขมัน</span>
+            <span className="block text-sm font-bold text-sky-600">
               {dailyTotals.consumedFat}/{targetFatGrams}
             </span>
-            <span className="block text-[10px] text-ink-700">g</span>
+            <span className="block text-[10px] text-sky-800">g</span>
           </div>
         </div>
       </section>
 
-      {/* เพิ่มรายการอาหาร */}
-      <section className="rounded-3xl glass-card p-4 space-y-3.5 animate-card-rise stagger-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Utensils className="w-4 h-4 text-sage-600" />
-            <h2 className="text-base font-bold text-ink-900">เพิ่มมื้ออาหาร</h2>
-          </div>
+      {/* สลับโหมดบันทึกที่กิน & ออกแบบแต่ละมื้อ */}
+      <div className="rounded-2xl glass-dock p-1.5 animate-card-rise stagger-2">
+        <div className="relative grid grid-cols-2">
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 w-1/2 rounded-xl glass-dock-indicator pointer-events-none"
+            style={{
+              transform: `translateX(${subView === 'log' ? 0 : 100}%)`,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setSubView('log')}
+            className={`relative z-10 tactile-btn min-h-[40px] rounded-xl inline-flex items-center justify-center gap-1.5 text-xs font-bold ${
+              subView === 'log' ? 'text-sage-900' : 'text-ink-700'
+            }`}
+          >
+            <Utensils className="w-3.5 h-3.5 text-sage-600" />
+            <span>บันทึกที่กิน</span>
+            {todayFoods.length > 0 && (
+              <span className="rounded-full bg-sage-600/15 text-sage-700 px-1.5 py-0.2 text-[10px] font-bold tabular-data">
+                {todayFoods.length}
+              </span>
+            )}
+          </button>
 
           <button
             type="button"
-            onClick={() => setMode((m) => (m === 'natural' ? 'manual' : 'natural'))}
-            className="tactile-btn inline-flex items-center gap-1 rounded-full glass-pill px-3 py-1.5 text-xs font-semibold text-ink-900"
+            onClick={() => setSubView('designer')}
+            className={`relative z-10 tactile-btn min-h-[40px] rounded-xl inline-flex items-center justify-center gap-1.5 text-xs font-bold ${
+              subView === 'designer' ? 'text-sage-900' : 'text-ink-700'
+            }`}
           >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-sage-600" />
-            <span>{mode === 'natural' ? 'กรอกฉลากเอง' : 'พิมพ์ชื่อเมนู'}</span>
+            <ChefHat className="w-3.5 h-3.5 text-sage-600" />
+            <span>ออกแบบแต่ละมื้อ</span>
           </button>
         </div>
+      </div>
 
-        <div key={mode} className="space-y-3 animate-list-item">
-          {mode === 'natural' ? (
-            <>
-              <form onSubmit={handleFoodSubmit} className="flex gap-2">
-                <input
-                  type="text"
-                  value={foodInput}
-                  onChange={(e) => setFoodInput(e.target.value)}
-                  placeholder="ชื่อเมนู เช่น สุกี้น้ำไก่, ข้าวมันไก่พิเศษ"
-                  aria-label="ชื่ออาหาร"
-                  className="flex-1 min-h-[46px] rounded-2xl glass-input px-3.5 text-sm text-ink-900"
-                />
-                <button
-                  type="submit"
-                  disabled={!foodInput.trim()}
-                  className="tactile-btn min-h-[46px] rounded-2xl glass-btn-primary disabled:opacity-50 px-4 text-sm font-bold inline-flex items-center gap-1 shrink-0"
-                >
-                  {justAdded ? (
-                    <Check className="w-4 h-4 animate-confirm-pop" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                  <span>{justAdded ? 'เพิ่มแล้ว' : 'เพิ่ม'}</span>
-                </button>
-              </form>
-
-              <div className="flex flex-wrap gap-1.5">
-                {personalizedChips.map((chip) => (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => logFoodWithToast(chip)}
-                    className="tactile-btn rounded-full glass-pill px-3 py-1.5 text-xs font-medium text-ink-900"
-                  >
-                    + {chip}
-                  </button>
-                ))}
+      {subView === 'designer' ? (
+        <div key="designer" className="animate-page-right">
+          <MealDesignerPanel
+            profile={profile}
+            mealPlan={mealPlan}
+            onSelectPattern={onSelectMealPattern}
+            onRegeneratePlan={onRegenerateMealPlan}
+            onSwapSlot={onSwapMealSlot}
+            onApplyCustomPlate={onApplyCustomPlate}
+            onApplyProductToSlot={onApplyProductToSlot}
+            onLogPlannedMeal={onLogPlannedMeal}
+            onNotify={onNotify}
+          />
+        </div>
+      ) : (
+        <div key="log" className="space-y-4 animate-page-left">
+          {/* เพิ่มรายการอาหาร */}
+          <section className="rounded-3xl glass-card p-4 space-y-3.5 animate-card-rise stagger-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Utensils className="w-4 h-4 text-sage-600" />
+                <h2 className="text-base font-bold text-ink-900">เพิ่มมื้ออาหาร</h2>
               </div>
-            </>
-          ) : (
+
+              <button
+                type="button"
+                onClick={() =>
+                  setMode((m) => (m === 'natural' ? 'manual' : 'natural'))
+                }
+                className="tactile-btn inline-flex items-center gap-1 rounded-full glass-pill px-3 py-1.5 text-xs font-semibold text-ink-900"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-sage-600" />
+                <span>{mode === 'natural' ? 'กรอกฉลากเอง' : 'พิมพ์ชื่อเมนู'}</span>
+              </button>
+            </div>
+
+            <div key={mode} className="space-y-3 animate-list-item">
+              {mode === 'natural' ? (
+                <>
+                  <form onSubmit={handleFoodSubmit} className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={foodInput}
+                      onChange={(e) => setFoodInput(e.target.value)}
+                      placeholder="ชื่อเมนู / สินค้า เช่น สุกี้น้ำไก่"
+                      aria-label="ชื่ออาหารหรือบาร์โค้ด"
+                      className="flex-1 min-w-0 min-h-[46px] rounded-2xl glass-input px-3.5 text-sm text-ink-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setScannerOpen(true)}
+                      aria-label="สแกนบาร์โค้ด"
+                      className="tactile-btn min-h-[46px] rounded-2xl glass-pill px-3 text-xs font-bold text-ink-900 inline-flex items-center gap-1 shrink-0"
+                    >
+                      <ScanBarcode className="w-4 h-4 text-sage-600" />
+                      <span>บาร์โค้ด</span>
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!foodInput.trim()}
+                      className="tactile-btn min-h-[46px] rounded-2xl glass-btn-primary disabled:opacity-50 px-3.5 text-sm font-bold inline-flex items-center gap-1 shrink-0"
+                    >
+                      {justAdded ? (
+                        <Check className="w-4 h-4 animate-confirm-pop" />
+                      ) : (
+                        <Plus className="w-4 h-4" />
+                      )}
+                      <span>{justAdded ? 'เพิ่มแล้ว' : 'เพิ่ม'}</span>
+                    </button>
+                  </form>
+
+                  {/* ผลลัพธ์ฉลากจริงจาก Open Food Facts เฉพาะตอนพิมพ์ค้นหาหรือสแกนบาร์โค้ด */}
+                  {(isOffSearching || offMatches.length > 0) && (
+                    <div className="rounded-2xl glass-card-mint p-3 space-y-2 animate-list-item">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-ink-900">
+                        <span className="inline-flex items-center gap-1.5">
+                          <ScanBarcode className="w-3.5 h-3.5 text-sage-600" />
+                          <span>ข้อมูลฉลาก Open Food Facts</span>
+                          {isOffSearching && (
+                            <Loader2 className="w-3 h-3 text-sage-600 animate-spin" />
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setOffMatches([])}
+                          aria-label="ปิดผลลัพธ์ฉลาก"
+                          className="tactile-btn p-0.5 rounded-full text-ink-700"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {offMatches.length > 0 && (
+                        <div className="space-y-2 max-h-[250px] overflow-y-auto pr-0.5">
+                          {offMatches.map((item) => {
+                            const mult = offMultipliers[item.code] ?? 1;
+                            const scaled = scaleOpenFoodProduct(item, mult);
+                            const conflicts = checkProductDietaryConflict(
+                              item,
+                              profile.dietaryRestrictions
+                            );
+
+                            return (
+                              <div
+                                key={`${item.code}-${item.name}`}
+                                className="rounded-xl glass-subtle p-2.5 space-y-1.5"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <span className="text-xs font-bold text-ink-900 block truncate">
+                                      {item.name}
+                                      {item.brand ? ` · ${item.brand}` : ''}
+                                    </span>
+                                    <span className="text-[11px] text-ink-700 tabular-data">
+                                      {scaled.portionLabel} · P {scaled.proteinGrams}g · C{' '}
+                                      {scaled.carbsGrams}g · F {scaled.fatGrams}g
+                                    </span>
+                                  </div>
+                                  <span className="text-xs font-bold text-sage-700 shrink-0 tabular-data">
+                                    {scaled.calories} kcal
+                                  </span>
+                                </div>
+
+                                {(item.nutriScore ||
+                                  item.novaGroup ||
+                                  scaled.sugarGrams !== undefined ||
+                                  scaled.sodiumMg !== undefined) && (
+                                  <div className="flex flex-wrap items-center gap-1 text-[10px] tabular-data">
+                                    {item.nutriScore && (
+                                      <span
+                                        className={`rounded-full px-2 py-0.5 font-bold uppercase ${
+                                          NUTRI_BADGE_CLASS[item.nutriScore] ??
+                                          'bg-white/70 text-ink-900'
+                                        }`}
+                                      >
+                                        Nutri-Score {item.nutriScore}
+                                      </span>
+                                    )}
+                                    {item.novaGroup && (
+                                      <span className="rounded-full bg-white/70 px-2 py-0.5 font-semibold text-ink-700">
+                                        NOVA {item.novaGroup}
+                                      </span>
+                                    )}
+                                    {scaled.sugarGrams !== undefined && (
+                                      <span className="rounded-full bg-white/70 px-2 py-0.5 font-semibold text-ink-700">
+                                        น้ำตาล {scaled.sugarGrams}g
+                                      </span>
+                                    )}
+                                    {scaled.sodiumMg !== undefined && (
+                                      <span className="rounded-full bg-white/70 px-2 py-0.5 font-semibold text-ink-700">
+                                        โซเดียม {scaled.sodiumMg}mg
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
+                                {conflicts.length > 0 && (
+                                  <div className="rounded-lg glass-alert-warn px-2 py-1 flex items-center gap-1 text-[11px] font-semibold text-peach-900">
+                                    <AlertTriangle className="w-3 h-3 text-peach-700 shrink-0" />
+                                    <span>{conflicts.join(' · ')}</span>
+                                  </div>
+                                )}
+
+                                <div className="flex items-center justify-between gap-2 pt-0.5">
+                                  <div className="flex items-center gap-1 tabular-data">
+                                    {MULTIPLIERS.map((m) => (
+                                      <button
+                                        key={m}
+                                        type="button"
+                                        onClick={() =>
+                                          setOffMultipliers((prev) => ({
+                                            ...prev,
+                                            [item.code]: m,
+                                          }))
+                                        }
+                                        className={`tactile-btn min-w-[30px] h-6 rounded-lg px-1.5 text-[11px] font-bold ${
+                                          mult === m
+                                            ? 'glass-btn-primary'
+                                            : 'glass-pill text-ink-700'
+                                        }`}
+                                      >
+                                        {m}x
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleSelectOffProduct(item, mult)
+                                    }
+                                    className="tactile-btn min-h-[30px] rounded-xl glass-btn-primary px-3 text-xs font-bold inline-flex items-center gap-1 shrink-0"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                    <span>เลือกฉลากนี้</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {personalizedChips.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => logFoodWithToast(chip)}
+                        className="tactile-btn rounded-full glass-pill px-3 py-1.5 text-xs font-medium text-ink-900"
+                      >
+                        + {chip}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
             <form onSubmit={handleManualSubmit} className="space-y-3">
               <input
                 id="custom-food-name"
@@ -364,20 +702,30 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
             {todayFoods.map((item) => (
               <div
                 key={item.id}
-                className="py-3 flex items-start justify-between gap-3 animate-list-item"
+                className="py-3 flex items-center justify-between gap-2.5 animate-list-item"
               >
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-bold text-ink-900">{item.normalizedName}</h3>
-                  <p className="text-xs text-ink-700">{item.portionNote}</p>
-                  <p className="text-xs font-medium text-sage-700 tabular-data">
-                    P {item.isEstimated ? '~' : ''}
-                    {item.proteinGrams}g · C {item.isEstimated ? '~' : ''}
-                    {item.carbsGrams}g · F {item.isEstimated ? '~' : ''}
-                    {item.fatGrams}g
-                  </p>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <FoodCategoryThumbnail
+                    name={item.normalizedName}
+                    isVerifiedLabel={
+                      !item.isEstimated && item.portionNote.includes('ฉลากจริง')
+                    }
+                  />
+                  <div className="min-w-0 space-y-1">
+                    <h3 className="text-sm font-bold text-ink-900 truncate">
+                      {item.normalizedName}
+                    </h3>
+                    <p className="text-xs text-ink-700 truncate">{item.portionNote}</p>
+                    <MacroPillBar
+                      proteinGrams={item.proteinGrams}
+                      carbsGrams={item.carbsGrams}
+                      fatGrams={item.fatGrams}
+                      isEstimated={item.isEstimated}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-bold text-ink-900 tabular-data">
+                  <span className="rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-bold text-sage-700 tabular-data">
                     {item.isEstimated ? '~' : ''}
                     {item.calories} kcal
                   </span>
@@ -456,6 +804,14 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
           </div>
         )}
       </section>
+        </div>
+      )}
+
+      <BarcodeScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onDetected={handleBarcodeDetected}
+      />
     </div>
   );
 };

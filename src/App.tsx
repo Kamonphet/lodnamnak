@@ -1,8 +1,9 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Check,
   Download,
   Dumbbell,
+  Flame,
   HeartPulse,
   MessageCircleHeart,
   Trash2,
@@ -43,6 +44,11 @@ export const App: React.FC = () => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const gamificationProgressRef = useRef<{
+    accountId: string;
+    level: number;
+    completedQuestIds: string[];
+  } | null>(null);
 
   const showOnboarding = !store.profile || !store.metrics || wizardMode !== 'none';
   const activeNavIndex = Math.max(
@@ -64,6 +70,57 @@ export const App: React.FC = () => {
     },
     [dismissToast]
   );
+
+  useEffect(() => {
+    const accountId = store.activeAccountId;
+    const g = store.gamification;
+    if (!accountId || !g) {
+      gamificationProgressRef.current = null;
+      return;
+    }
+
+    const completedQuestIds = g.quests.filter((q) => q.completed).map((q) => q.id);
+    const prev = gamificationProgressRef.current;
+
+    if (!prev || prev.accountId !== accountId) {
+      gamificationProgressRef.current = {
+        accountId,
+        level: g.level,
+        completedQuestIds,
+      };
+      return;
+    }
+
+    if (g.level > prev.level) {
+      pushToast({
+        title: `เลเวลอัปเป็น Lv.${g.level}!`,
+        detail: g.rankTitle,
+        tone: 'success',
+      });
+    } else {
+      const newlyCompleted = g.quests.filter(
+        (q) => q.completed && !prev.completedQuestIds.includes(q.id)
+      );
+      if (newlyCompleted.length > 0) {
+        const first = newlyCompleted[0];
+        pushToast({
+          title: g.allQuestsCompletedToday
+            ? 'เคลียร์ครบทุกภารกิจวันนี้!'
+            : `ภารกิจสำเร็จ +${first.xpReward} XP`,
+          detail: g.allQuestsCompletedToday
+            ? `${first.title} · โบนัสครบทุกข้อ +20 XP`
+            : first.title,
+          tone: 'success',
+        });
+      }
+    }
+
+    gamificationProgressRef.current = {
+      accountId,
+      level: g.level,
+      completedQuestIds,
+    };
+  }, [store.activeAccountId, store.gamification, pushToast]);
 
   const handleSelectTab = (nextTab: ActiveTab) => {
     if (nextTab === activeTab) return;
@@ -142,7 +199,7 @@ export const App: React.FC = () => {
       <div className="w-full max-w-md min-h-dvh flex flex-col relative z-10">
         {/* แถบด้านบนสไตล์ Liquid Glass พร้อมไอคอนประจำแอป */}
         <header className="sticky top-2.5 z-30 mx-3 mt-2.5 rounded-2xl glass-header px-3.5 py-2.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 shrink-0">
             <img
               src="/favicon.svg"
               alt=""
@@ -155,21 +212,40 @@ export const App: React.FC = () => {
             </span>
           </div>
 
-          {store.accounts.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowAccountsPanel((prev) => !prev)}
-              className="tactile-btn inline-flex items-center gap-1.5 rounded-full glass-pill px-3 py-1.5 text-xs font-semibold text-ink-900"
-            >
-              <Users className="w-3.5 h-3.5 text-sage-600" />
-              <span className="max-w-[115px] truncate">
-                {store.profile?.name || 'สลับผู้ใช้'}
-              </span>
-              <span className="rounded-full bg-sage-600/15 text-sage-700 px-1.5 py-0.2 text-[10px] font-bold tabular-data">
-                {store.accounts.length}
-              </span>
-            </button>
-          )}
+          <div className="flex items-center gap-1.5 min-w-0">
+            {!showOnboarding && store.gamification && (
+              <button
+                type="button"
+                onClick={() => handleSelectTab('dashboard')}
+                aria-label="ดูภารกิจและเลเวลประจำวัน"
+                className={`tactile-btn inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold shrink-0 tabular-data ${
+                  store.gamification.currentStreakDays > 0
+                    ? 'glass-btn-warm'
+                    : 'glass-pill text-ink-900'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5" />
+                <span>{store.gamification.currentStreakDays} วัน</span>
+                <span className="opacity-80">· Lv.{store.gamification.level}</span>
+              </button>
+            )}
+
+            {store.accounts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAccountsPanel((prev) => !prev)}
+                className="tactile-btn inline-flex items-center gap-1.5 rounded-full glass-pill px-2.5 py-1.5 text-xs font-semibold text-ink-900 min-w-0"
+              >
+                <Users className="w-3.5 h-3.5 text-sage-600 shrink-0" />
+                <span className="max-w-[88px] truncate">
+                  {store.profile?.name || 'สลับผู้ใช้'}
+                </span>
+                <span className="rounded-full bg-sage-600/15 text-sage-700 px-1.5 py-0.2 text-[10px] font-bold tabular-data shrink-0">
+                  {store.accounts.length}
+                </span>
+              </button>
+            )}
+          </div>
         </header>
 
         {/* แผงจัดการหลายโปรไฟล์ */}
@@ -344,37 +420,54 @@ export const App: React.FC = () => {
                 tabDirection === 'right' ? 'animate-page-right' : 'animate-page-left'
               }`}
             >
-              {activeTab === 'dashboard' && store.profile && store.metrics && (
-                <DashboardTab
-                  profile={store.profile}
-                  metrics={store.metrics}
-                  timelines={store.timelines}
-                  safetyAlerts={store.safetyAlerts}
-                  dailyTotals={store.dailyTotals}
-                  weightHistory={store.weightHistory}
-                  onSelectPace={store.selectPace}
-                  onReportWeight={store.reportNewWeight}
-                  onEditProfile={() => setWizardMode('edit')}
-                  onNotify={pushToast}
-                />
-              )}
+              {activeTab === 'dashboard' &&
+                store.profile &&
+                store.metrics &&
+                store.gamification && (
+                  <DashboardTab
+                    profile={store.profile}
+                    metrics={store.metrics}
+                    timelines={store.timelines}
+                    safetyAlerts={store.safetyAlerts}
+                    dailyTotals={store.dailyTotals}
+                    gamification={store.gamification}
+                    weightHistory={store.weightHistory}
+                    onSelectPace={store.selectPace}
+                    onReportWeight={store.reportNewWeight}
+                    onAdjustWater={store.adjustTodayWater}
+                    onEquipAccessory={store.equipAvatarAccessory}
+                    onEditProfile={() => setWizardMode('edit')}
+                    onNotify={pushToast}
+                  />
+                )}
 
-              {activeTab === 'food' && store.profile && store.metrics && (
-                <FoodTrackerTab
-                  profile={store.profile}
-                  todayFoods={store.todayFoods}
-                  habitAnalyses={store.habitAnalyses}
-                  dailyTotals={store.dailyTotals}
-                  targetCarbsGrams={store.metrics.targetCarbsGrams}
-                  targetFatGrams={store.metrics.targetFatGrams}
-                  onAddFoodText={store.addFoodByText}
-                  onAddCustomFood={store.addCustomFood}
-                  onRemoveFood={store.removeFoodLog}
-                  onAnalyzeHabit={store.addHabitAnalysis}
-                  onNotify={pushToast}
-                  onRequestConfirm={setConfirmDialog}
-                />
-              )}
+              {activeTab === 'food' &&
+                store.profile &&
+                store.metrics &&
+                store.mealPlan && (
+                  <FoodTrackerTab
+                    profile={store.profile}
+                    todayFoods={store.todayFoods}
+                    habitAnalyses={store.habitAnalyses}
+                    mealPlan={store.mealPlan}
+                    dailyTotals={store.dailyTotals}
+                    targetCarbsGrams={store.metrics.targetCarbsGrams}
+                    targetFatGrams={store.metrics.targetFatGrams}
+                    onAddFoodText={store.addFoodByText}
+                    onAddCustomFood={store.addCustomFood}
+                    onAddProductFood={store.addProductFood}
+                    onRemoveFood={store.removeFoodLog}
+                    onAnalyzeHabit={store.addHabitAnalysis}
+                    onSelectMealPattern={store.setMealPattern}
+                    onRegenerateMealPlan={store.regenerateMealPlan}
+                    onSwapMealSlot={store.swapMealSlot}
+                    onApplyCustomPlate={store.applyCustomPlateToSlot}
+                    onApplyProductToSlot={store.applyProductToMealSlot}
+                    onLogPlannedMeal={store.logPlannedMeal}
+                    onNotify={pushToast}
+                    onRequestConfirm={setConfirmDialog}
+                  />
+                )}
 
               {activeTab === 'workout' && store.profile && (
                 <WorkoutPlanTab
