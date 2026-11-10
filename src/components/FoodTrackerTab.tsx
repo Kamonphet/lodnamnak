@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  Camera,
   Check,
   ChefHat,
   Lightbulb,
   Loader2,
   Plus,
-  ScanBarcode,
   SlidersHorizontal,
   Trash2,
   Utensils,
@@ -15,7 +15,6 @@ import {
 import { getPersonalizedMealSuggestions } from '../domain/foodAnalyzer';
 import {
   checkProductDietaryConflict,
-  lookupOpenFoodFactsBarcode,
   scaleOpenFoodProduct,
   searchLocalOffCatalog,
   searchOpenFoodFacts,
@@ -27,11 +26,12 @@ import {
   HabitAnalysisResult,
   MealPatternId,
   OpenFoodProduct,
+  ParsedNutritionLabel,
   PlannedMealItem,
   PlateSelection,
   UserProfile,
 } from '../domain/types';
-import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { NutritionLabelScannerModal } from './NutritionLabelScannerModal';
 import { ConfirmDialogState } from './ConfirmDialog';
 import { ToastMessage } from './LiquidToast';
 import { MealDesignerPanel } from './MealDesignerPanel';
@@ -186,22 +186,34 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
     });
   };
 
-  const handleBarcodeDetected = async (barcode: string) => {
+  const handleLabelConfirmed = (
+    label: ParsedNutritionLabel,
+    mult: number
+  ) => {
     setScannerOpen(false);
-    setFoodInput(barcode);
-    setIsOffSearching(true);
-    const res = await lookupOpenFoodFactsBarcode(barcode);
-    setIsOffSearching(false);
-    if (res.product) {
-      setOffMatches([res.product]);
-    } else {
-      setOffMatches([]);
-      onNotify?.({
-        title: 'ไม่พบบาร์โค้ดนี้ใน Open Food Facts',
-        detail: barcode,
-        tone: 'warning',
-      });
-    }
+    const scaledProduct: OpenFoodProduct = {
+      code: `label-${Date.now()}`,
+      name: label.productName,
+      brand: 'ฉลากโภชนาการ',
+      servingLabel: label.servingLabel,
+      calories: Math.max(0, Math.round(label.calories * mult)),
+      proteinGrams: Number((label.proteinGrams * mult).toFixed(1)),
+      carbsGrams: Number((label.carbsGrams * mult).toFixed(1)),
+      fatGrams: Number((label.fatGrams * mult).toFixed(1)),
+      sugarGrams: label.sugarGrams ? Number((label.sugarGrams * mult).toFixed(1)) : undefined,
+      sodiumMg: label.sodiumMg ? Math.round(label.sodiumMg * mult) : undefined,
+      allergenTags: label.detectedAllergens,
+      ingredientsText: label.ingredientsText,
+      source: 'off_local',
+    };
+
+    const added = onAddProductFood(scaledProduct, 1);
+    flashAddedState();
+    onNotify?.({
+      title: `บันทึกจากฉลาก ${added.normalizedName}`,
+      detail: `+${added.calories} kcal · P ${added.proteinGrams}g`,
+      tone: 'success',
+    });
   };
 
   const logFoodWithToast = (raw: string) => {
@@ -391,6 +403,9 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
             onApplyCustomPlate={onApplyCustomPlate}
             onApplyProductToSlot={onApplyProductToSlot}
             onLogPlannedMeal={onLogPlannedMeal}
+            remainingCalories={dailyTotals.remainingCalories}
+            targetProteinGrams={dailyTotals.targetProtein}
+            consumedProteinGrams={dailyTotals.consumedProtein}
             onNotify={onNotify}
           />
         </div>
@@ -425,17 +440,17 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                       value={foodInput}
                       onChange={(e) => setFoodInput(e.target.value)}
                       placeholder="ชื่อเมนู / สินค้า เช่น สุกี้น้ำไก่"
-                      aria-label="ชื่ออาหารหรือบาร์โค้ด"
+                      aria-label="ชื่ออาหารหรือค้นหาสินค้า"
                       className="flex-1 min-w-0 min-h-[46px] rounded-2xl glass-input px-3.5 text-sm text-ink-900"
                     />
                     <button
                       type="button"
                       onClick={() => setScannerOpen(true)}
-                      aria-label="สแกนบาร์โค้ด"
-                      className="tactile-btn min-h-[46px] rounded-2xl glass-pill px-3 text-xs font-bold text-ink-900 inline-flex items-center gap-1 shrink-0"
+                      aria-label="ถ่ายภาพฉลากโภชนาการ"
+                      className="tactile-btn min-h-[46px] rounded-2xl glass-pill px-3 text-xs font-bold text-ink-900 inline-flex items-center gap-1.5 shrink-0"
                     >
-                      <ScanBarcode className="w-4 h-4 text-sage-600" />
-                      <span>บาร์โค้ด</span>
+                      <Camera className="w-4 h-4 text-sage-600" />
+                      <span>ถ่ายฉลาก</span>
                     </button>
                     <button
                       type="submit"
@@ -451,12 +466,12 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                     </button>
                   </form>
 
-                  {/* ผลลัพธ์ฉลากจริงจาก Open Food Facts เฉพาะตอนพิมพ์ค้นหาหรือสแกนบาร์โค้ด */}
+                  {/* ผลลัพธ์ฉลากจริงจาก Open Food Facts เฉพาะตอนพิมพ์ค้นหา */}
                   {(isOffSearching || offMatches.length > 0) && (
                     <div className="rounded-2xl glass-card-mint p-3 space-y-2 animate-list-item">
                       <div className="flex items-center justify-between text-[11px] font-bold text-ink-900">
                         <span className="inline-flex items-center gap-1.5">
-                          <ScanBarcode className="w-3.5 h-3.5 text-sage-600" />
+                          <Camera className="w-3.5 h-3.5 text-sage-600" />
                           <span>ข้อมูลฉลาก Open Food Facts</span>
                           {isOffSearching && (
                             <Loader2 className="w-3 h-3 text-sage-600 animate-spin" />
@@ -807,10 +822,14 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
         </div>
       )}
 
-      <BarcodeScannerModal
-        open={scannerOpen}
+      <NutritionLabelScannerModal
+        isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
-        onDetected={handleBarcodeDetected}
+        profile={profile}
+        remainingCalories={dailyTotals.remainingCalories}
+        targetProteinGrams={dailyTotals.targetProtein}
+        consumedProteinGrams={dailyTotals.consumedProtein}
+        onConfirmLabel={handleLabelConfirmed}
       />
     </div>
   );

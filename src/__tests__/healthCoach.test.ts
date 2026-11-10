@@ -42,6 +42,13 @@ import {
   computeStreakWithShield,
 } from '../domain/gamification';
 import {
+  createFoodLogFromLabel,
+  createPlannedMealFromLabel,
+  evaluateNutritionLabelDecision,
+  extractAllergensFromText,
+  parseNutritionFactsText,
+} from '../domain/labelOcrParser';
+import {
   calculateProgressSummary,
   formatDateLabel,
 } from '../domain/progressHistory';
@@ -777,6 +784,137 @@ describe('Progress & History Tracking Engine', () => {
       const yesterdayFoods = allFoods.filter((f) => f.dateKey === pastDay);
       expect(yesterdayFoods).toHaveLength(1);
       expect(yesterdayFoods[0].calories).toBe(550);
+    });
+  });
+
+  describe('Nutrition Label OCR & Decision Engine', () => {
+    it('correctly parses Thai nutrition facts label text into structured macros', () => {
+      const sampleThaiLabel = `
+        นมถั่วเหลือง รสหวานน้อย
+        ข้อมูลโภชนาการ
+        หนึ่งหน่วยบริโภค: 1 กล่อง (250 มล.)
+        จำนวนหน่วยบริโภคต่อภาชนะบรรจุ: 1
+        พลังงานทั้งหมด 140 กิโลแคลอรี
+        โปรตีน 7 กรัม
+        คาร์โบไฮเดรตทั้งหมด 16 กรัม
+        ไขมันทั้งหมด 5 กรัม
+        น้ำตาล 10 กรัม
+        โซเดียม 95 มก.
+        ส่วนประกอบสำคัญ: นมถั่วเหลือง 95%, น้ำตาล 4%
+        ข้อมูลสำหรับผู้แพ้อาหาร: มีถั่วเหลือง
+      `;
+
+      const parsed = parseNutritionFactsText(sampleThaiLabel);
+      expect(parsed.calories).toBe(140);
+      expect(parsed.proteinGrams).toBe(7);
+      expect(parsed.carbsGrams).toBe(16);
+      expect(parsed.fatGrams).toBe(5);
+      expect(parsed.sugarGrams).toBe(10);
+      expect(parsed.sodiumMg).toBe(95);
+      expect(parsed.servingsPerContainer).toBe(1);
+      expect(parsed.confidence).toBe('high');
+      expect(parsed.detectedAllergens).toContain('ถั่วเหลือง');
+      expect(extractAllergensFromText('นมโคแท้ 100%')).toContain('นม / ผลิตภัณฑ์จากนม');
+    });
+
+    it('correctly parses English nutrition label text', () => {
+      const sampleEngLabel = `
+        Greek Yogurt Drink
+        Nutrition Facts
+        Serving Size: 1 bottle (200ml)
+        Calories 120
+        Total Fat 2.5g
+        Total Carbohydrate 14g
+        Protein 12g
+        Sugars 9g
+        Sodium 80mg
+        Ingredients: Pasteurized Skim Milk, Live Active Cultures
+      `;
+
+      const parsed = parseNutritionFactsText(sampleEngLabel);
+      expect(parsed.calories).toBe(120);
+      expect(parsed.proteinGrams).toBe(12);
+      expect(parsed.carbsGrams).toBe(14);
+      expect(parsed.fatGrams).toBe(2.5);
+      expect(parsed.sugarGrams).toBe(9);
+      expect(parsed.sodiumMg).toBe(80);
+      expect(parsed.confidence).toBe('high');
+      expect(parsed.detectedAllergens).toContain('นม / ผลิตภัณฑ์จากนม');
+    });
+
+    it('evaluates health decisions accurately: warns when allergens conflict with user restrictions', () => {
+      const milkLabel = parseNutritionFactsText(`
+        เวย์โปรตีนพร้อมดื่ม
+        พลังงาน 180 kcal
+        โปรตีน 28 g
+        คาร์โบไฮเดรต 4 g
+        ไขมัน 2 g
+        ส่วนประกอบ: เวย์โปรตีนไอโซเลต, นมผง
+      `);
+
+      const lactoseIntolerantUser: UserProfile = {
+        ...ACTIVE_MALE_PROFILE,
+        dietaryRestrictions: 'แพ้นม, แพ้นมวัว',
+      };
+
+      const decision = evaluateNutritionLabelDecision({
+        label: milkLabel,
+        profile: lactoseIntolerantUser,
+        remainingDailyCalories: 1000,
+        targetProteinGrams: 120,
+        consumedProteinGrams: 40,
+      });
+
+      expect(decision.verdict).toBe('unsafe');
+      expect(decision.allergenAlerts.length).toBeGreaterThan(0);
+      expect(decision.allergenAlerts[0]).toContain('นม');
+    });
+
+    it('evaluates health decisions accurately: recommends high-protein items fitting within budget', () => {
+      const chickenLabel = parseNutritionFactsText(`
+        อกไก่นุ่มพร้อมทาน
+        พลังงาน 130 kcal
+        โปรตีน 25 g
+        คาร์โบไฮเดรต 1 g
+        ไขมัน 2.5 g
+        โซเดียม 420 มก.
+        ส่วนประกอบ: เนื้ออกไก่ 90%
+      `);
+
+      const decision = evaluateNutritionLabelDecision({
+        label: chickenLabel,
+        profile: ACTIVE_MALE_PROFILE,
+        remainingDailyCalories: 800,
+        targetProteinGrams: 140,
+        consumedProteinGrams: 50,
+      });
+
+      expect(decision.verdict).toBe('recommended');
+      expect(decision.macroHighlights.some((h) => h.includes('โปรตีนสูง'))).toBe(true);
+      expect(decision.suggestedPortion).toBe(1);
+    });
+
+    it('creates scaled FoodLogItem and PlannedMealItem from parsed label', () => {
+      const label = parseNutritionFactsText(`
+        นมโอ๊ต รสจืด
+        พลังงาน 100 kcal
+        โปรตีน 3 g
+        คาร์โบไฮเดรต 14 g
+        ไขมัน 3 g
+      `);
+
+      // 1.5x portion
+      const logItem = createFoodLogFromLabel(label, 1.5, '2026-11-10');
+      expect(logItem.calories).toBe(150);
+      expect(logItem.proteinGrams).toBe(4.5);
+      expect(logItem.carbsGrams).toBe(21);
+      expect(logItem.fatGrams).toBe(4.5);
+      expect(logItem.isEstimated).toBe(false);
+
+      const plannedMeal = createPlannedMealFromLabel(label, 2);
+      expect(plannedMeal.calories).toBe(200);
+      expect(plannedMeal.proteinGrams).toBe(6);
+      expect(plannedMeal.isVerifiedLabel).toBe(true);
     });
   });
 });

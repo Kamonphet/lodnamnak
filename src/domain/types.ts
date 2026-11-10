@@ -243,6 +243,34 @@ export interface OpenFoodProduct {
   source: 'off_api' | 'off_local';
 }
 
+export type LabelDecisionVerdict = 'recommended' | 'acceptable' | 'caution' | 'unsafe';
+
+export interface ParsedNutritionLabel {
+  productName: string;
+  servingLabel: string;
+  servingsPerContainer: number;
+  calories: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
+  sugarGrams?: number;
+  sodiumMg?: number;
+  ingredientsText?: string;
+  detectedAllergens: string[];
+  rawText: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface NutritionLabelDecision {
+  verdict: LabelDecisionVerdict;
+  headline: string;
+  allergenAlerts: string[];
+  macroHighlights: string[];
+  advice: string;
+  suggestedPortion: number;
+  calorieImpactPct: number;
+}
+
 export interface PlannedMealItem {
   title: string;
   portionDesc: string;
@@ -290,7 +318,7 @@ export type BadgeIconKey =
   | 'utensils'
   | 'dumbbell'
   | 'flame'
-  | 'barcode'
+  | 'camera'
   | 'shield'
   | 'scale'
   | 'sparkles'

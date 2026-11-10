@@ -745,35 +745,6 @@ export function searchLocalOffCatalog(query: string): OpenFoodProduct[] {
   });
 }
 
-export async function lookupOpenFoodFactsBarcode(barcode: string): Promise<{
-  product: OpenFoodProduct | null;
-  fromLiveApi: boolean;
-}> {
-  const cleanCode = barcode.replace(/[\s-]/g, '');
-  if (!/^\d{8,14}$/.test(cleanCode)) {
-    return { product: null, fromLiveApi: false };
-  }
-
-  const localHit = [...readCachedProducts(), ...THAI_LOCAL_OFF_CATALOG].find(
-    (p) => p.code === cleanCode
-  );
-
-  const apiUrl = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(
-    cleanCode
-  )}?fields=${OFF_FIELDS}`;
-  const data = (await fetchJsonWithTimeout(apiUrl)) as Record<string, unknown> | null;
-
-  if (data && data.status === 1 && data.product) {
-    const normalized = normalizeOffRawProduct(data.product, 'off_api');
-    if (normalized) {
-      saveToCache([normalized]);
-      return { product: normalized, fromLiveApi: true };
-    }
-  }
-
-  return { product: localHit ?? null, fromLiveApi: false };
-}
-
 export async function searchOpenFoodFacts(query: string): Promise<{
   products: OpenFoodProduct[];
   fromLiveApi: boolean;
@@ -781,16 +752,6 @@ export async function searchOpenFoodFacts(query: string): Promise<{
   const trimmed = query.trim();
   if (!trimmed) {
     return { products: [], fromLiveApi: false };
-  }
-
-  // ถ้าระบุเป็นตัวเลขบาร์โค้ด 8–14 หลัก ให้ค้นหาแบบบาร์โค้ดโดยตรงทันที
-  const digitCandidate = trimmed.replace(/[\s-]/g, '');
-  if (/^\d{8,14}$/.test(digitCandidate)) {
-    const single = await lookupOpenFoodFactsBarcode(digitCandidate);
-    return {
-      products: single.product ? [single.product] : [],
-      fromLiveApi: single.fromLiveApi,
-    };
   }
 
   const localMatches = searchLocalOffCatalog(trimmed);

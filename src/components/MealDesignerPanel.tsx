@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Camera,
   Check,
   Plus,
   RefreshCw,
-  ScanBarcode,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
@@ -17,20 +17,18 @@ import {
   PLATE_CARBS,
   PLATE_VEGGIES,
 } from '../domain/mealPlanner';
-import {
-  lookupOpenFoodFactsBarcode,
-  ServingMultiplier,
-} from '../domain/openFoodFacts';
+import { ServingMultiplier } from '../domain/openFoodFacts';
 import {
   DailyMealPlan,
   FoodLogItem,
   MealPatternId,
   OpenFoodProduct,
+  ParsedNutritionLabel,
   PlannedMealItem,
   PlateSelection,
   UserProfile,
 } from '../domain/types';
-import { BarcodeScannerModal } from './BarcodeScannerModal';
+import { NutritionLabelScannerModal } from './NutritionLabelScannerModal';
 import { ToastMessage } from './LiquidToast';
 import {
   MacroPillBar,
@@ -51,6 +49,9 @@ interface MealDesignerPanelProps {
     multiplier: ServingMultiplier
   ) => void;
   onLogPlannedMeal: (meal: PlannedMealItem, slotLabel: string) => FoodLogItem;
+  remainingCalories?: number;
+  targetProteinGrams?: number;
+  consumedProteinGrams?: number;
   onNotify?: (toast: Omit<ToastMessage, 'id'>) => void;
 }
 
@@ -73,6 +74,9 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
   onApplyCustomPlate,
   onApplyProductToSlot,
   onLogPlannedMeal,
+  remainingCalories,
+  targetProteinGrams,
+  consumedProteinGrams,
   onNotify,
 }) => {
   const [openBuilderIdx, setOpenBuilderIdx] = useState<number | null>(null);
@@ -169,28 +173,38 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
     });
   };
 
-  const handleSlotBarcodeDetected = async (barcode: string) => {
+  const handleSlotLabelConfirmed = (
+    label: ParsedNutritionLabel,
+    mult: number
+  ) => {
     const targetIdx = scanningSlotIdx;
     setScanningSlotIdx(null);
     if (targetIdx === null) return;
     const targetSlot = mealPlan.slots[targetIdx];
     if (!targetSlot) return;
 
-    const res = await lookupOpenFoodFactsBarcode(barcode);
-    if (res.product) {
-      onApplyProductToSlot(targetIdx, res.product, 1);
-      onNotify?.({
-        title: `อัปเดต${targetSlot.slotLabel}แล้ว`,
-        detail: `${res.product.name} (${res.product.calories} kcal)`,
-        tone: 'success',
-      });
-    } else {
-      onNotify?.({
-        title: 'ไม่พบบาร์โค้ดนี้ใน Open Food Facts',
-        detail: barcode,
-        tone: 'warning',
-      });
-    }
+    const scaledProduct: OpenFoodProduct = {
+      code: `label-${Date.now()}`,
+      name: label.productName,
+      brand: 'ฉลากโภชนาการ',
+      servingLabel: label.servingLabel,
+      calories: Math.max(0, Math.round(label.calories * mult)),
+      proteinGrams: Number((label.proteinGrams * mult).toFixed(1)),
+      carbsGrams: Number((label.carbsGrams * mult).toFixed(1)),
+      fatGrams: Number((label.fatGrams * mult).toFixed(1)),
+      sugarGrams: label.sugarGrams ? Number((label.sugarGrams * mult).toFixed(1)) : undefined,
+      sodiumMg: label.sodiumMg ? Math.round(label.sodiumMg * mult) : undefined,
+      allergenTags: label.detectedAllergens,
+      ingredientsText: label.ingredientsText,
+      source: 'off_local',
+    };
+
+    onApplyProductToSlot(targetIdx, scaledProduct, 1);
+    onNotify?.({
+      title: `อัปเดต${targetSlot.slotLabel}แล้ว`,
+      detail: `${label.productName} (~${Math.round(label.calories * mult)} kcal)`,
+      tone: 'success',
+    });
   };
 
   return (
@@ -300,10 +314,10 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
                     setOpenBuilderIdx(null);
                     setScanningSlotIdx(slotIdx);
                   }}
-                  aria-label={`สแกนบาร์โค้ดสำหรับ${slot.slotLabel}`}
+                  aria-label={`ถ่ายภาพฉลากสำหรับ${slot.slotLabel}`}
                   className="tactile-btn p-1.5 rounded-xl glass-pill text-ink-900"
                 >
-                  <ScanBarcode className="w-3.5 h-3.5 text-sage-600" />
+                  <Camera className="w-3.5 h-3.5 text-sage-600" />
                 </button>
               </div>
             </div>
@@ -616,10 +630,14 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
         );
       })}
 
-      <BarcodeScannerModal
-        open={scanningSlotIdx !== null}
+      <NutritionLabelScannerModal
+        isOpen={scanningSlotIdx !== null}
         onClose={() => setScanningSlotIdx(null)}
-        onDetected={handleSlotBarcodeDetected}
+        profile={profile}
+        remainingCalories={remainingCalories ?? 500}
+        targetProteinGrams={targetProteinGrams ?? 100}
+        consumedProteinGrams={consumedProteinGrams ?? 0}
+        onConfirmLabel={handleSlotLabelConfirmed}
       />
     </div>
   );

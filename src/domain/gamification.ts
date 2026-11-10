@@ -378,11 +378,11 @@ export function calculateGamificationSummary(
     },
     {
       id: 'verified_scanner',
-      title: 'นักสแกนฉลากจริง',
+      title: 'นักสแกนฉลากโภชนาการ',
       unlocked: verifiedLabelCount >= 1,
       progressText: `${Math.min(verifiedLabelCount, 1)}/1 รายการ`,
       difficulty: 'easy',
-      iconKey: 'barcode',
+      iconKey: 'camera',
     },
     {
       id: 'balanced_day',

@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Apple,
   Beef,
+  Camera,
   Coffee,
   CupSoda,
   Drumstick,
@@ -10,7 +11,6 @@ import {
   Flame,
   Moon,
   Salad,
-  ScanBarcode,
   Soup,
   Sun,
   Sunrise,
@@ -64,7 +64,7 @@ export const FoodCategoryThumbnail: React.FC<{
   if (isVerifiedLabel) {
     return (
       <span className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 inline-flex items-center justify-center shrink-0">
-        <ScanBarcode className="w-5 h-5" />
+        <Camera className="w-5 h-5" />
       </span>
     );
   }

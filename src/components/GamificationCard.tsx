@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Award,
   Beef,
+  Camera,
   Check,
   Crown,
   Droplets,
@@ -10,7 +11,6 @@ import {
   Footprints,
   Lock,
   Scale,
-  ScanBarcode,
   ShieldCheck,
   Sparkles,
   Trophy,
@@ -72,8 +72,8 @@ function renderBadgeIcon(iconKey?: BadgeIconKey) {
       return <Dumbbell className={cls} />;
     case 'flame':
       return <Flame className={cls} />;
-    case 'barcode':
-      return <ScanBarcode className={cls} />;
+    case 'camera':
+      return <Camera className={cls} />;
     case 'shield':
       return <ShieldCheck className={cls} />;
     case 'scale':
