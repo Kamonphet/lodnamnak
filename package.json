@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-tesseract.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-tesseract.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run"
@@ -17,6 +19,8 @@
     "three": "^0.170.0"
   },
   "devDependencies": {
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/tha": "^1.0.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/three": "^0.170.0",

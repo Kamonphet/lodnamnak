@@ -33,3 +33,6 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Generated OCR assets (scripts/copy-tesseract.mjs)
+public/tesseract/

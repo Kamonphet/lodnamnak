@@ -4,7 +4,9 @@ import react from '@vitejs/plugin-react';
 function productionCspPlugin(): Plugin {
   const cspContent = [
     "default-src 'self'",
-    "script-src 'self'",
+    // wasm-unsafe-eval: Tesseract OCR compiles its WebAssembly engine (served from 'self')
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "worker-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob:",

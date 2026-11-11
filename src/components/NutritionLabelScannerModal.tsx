@@ -33,7 +33,10 @@ interface NutritionLabelScannerModalProps {
   onConfirmLabel: (label: ParsedNutritionLabel, multiplier: number) => void;
 }
 
-type ScanStep = 'camera' | 'ocr_processing' | 'review_decision';
+type ScanStep = 'camera' | 'ocr_processing' | 'ocr_failed' | 'review_decision';
+
+// OCR files are served from our own origin (see scripts/copy-tesseract.mjs)
+const TESSERACT_BASE = new URL('tesseract', document.baseURI).href.replace(/\/$/, '');
 
 export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProps> = ({
   isOpen,
@@ -113,6 +116,10 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
 
     try {
       const worker = await createWorker('tha+eng', 1, {
+        workerPath: `${TESSERACT_BASE}/worker.min.js`,
+        corePath: TESSERACT_BASE,
+        langPath: TESSERACT_BASE,
+        workerBlobURL: false,
         logger: (m) => {
           if (m.status === 'recognizing text') {
             setOcrProgress(Math.round(m.progress * 100));
@@ -129,6 +136,13 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
       const rawText = ret.data.text || '';
       const parsed = parseNutritionFactsText(rawText);
 
+      // อ่านตัวเลขโภชนาการไม่ได้เลย ให้ผู้ใช้ถ่ายใหม่หรือกรอกเอง
+      if (parsed.calories === 0 && parsed.proteinGrams === 0 && parsed.carbsGrams === 0 && parsed.fatGrams === 0) {
+        setParsedLabel(parsed);
+        setStep('ocr_failed');
+        return;
+      }
+
       // รัน Decision Engine
       const dec = evaluateNutritionLabelDecision({
         label: parsed,
@@ -142,20 +156,34 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
       setDecision(dec);
       setMultiplier(dec.suggestedPortion);
       setStep('review_decision');
-    } catch {
-      // กรณี OCR ไม่ผ่าน ให้ fallback ให้ผู้ใช้กรอกค่าเอง
-      const fallbackParsed = parseNutritionFactsText('');
-      const dec = evaluateNutritionLabelDecision({
-        label: fallbackParsed,
+    } catch (err) {
+      console.error('Nutrition label OCR failed', err);
+      setParsedLabel(parseNutritionFactsText(''));
+      setStep('ocr_failed');
+    }
+  };
+
+  // กรอกค่าเองเมื่ออ่านฉลากไม่สำเร็จ
+  const handleManualEntry = () => {
+    const label = parsedLabel ?? parseNutritionFactsText('');
+    setParsedLabel(label);
+    setDecision(
+      evaluateNutritionLabelDecision({
+        label,
         profile,
         remainingDailyCalories: remainingCalories,
         targetProteinGrams,
         consumedProteinGrams,
-      });
-      setParsedLabel(fallbackParsed);
-      setDecision(dec);
-      setStep('review_decision');
-    }
+      })
+    );
+    setMultiplier(1);
+    setStep('review_decision');
+  };
+
+  const handleRetake = () => {
+    setStep('camera');
+    setCapturedImageUrl(null);
+    startCamera();
   };
 
   // ถ่ายภาพจาก Video Frame
@@ -342,10 +370,45 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
             </div>
           )}
 
+          {/* อ่านฉลากไม่สำเร็จ */}
+          {step === 'ocr_failed' && (
+            <div className="py-8 px-4 text-center space-y-4">
+              {capturedImageUrl && (
+                <img
+                  src={capturedImageUrl}
+                  alt=""
+                  className="w-24 h-24 mx-auto rounded-2xl object-cover border border-sand-200"
+                />
+              )}
+              <div className="flex items-center justify-center gap-2 text-amber-700">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <h3 className="text-base font-bold">อ่านตัวเลขบนฉลากไม่ได้</h3>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRetake}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage-500 hover:bg-sage-600 text-white font-bold text-sm"
+                >
+                  <Camera className="w-4 h-4" />
+                  ถ่ายใหม่
+                </button>
+                <button
+                  type="button"
+                  onClick={handleManualEntry}
+                  className="px-4 py-2 rounded-xl bg-white border border-sand-200 text-ink-700 font-semibold text-sm hover:bg-sand-50"
+                >
+                  กรอกเอง
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* STEP 3: หน้าสรุปผล & ระบบตัดสินใจ (Decision Review) */}
           {step === 'review_decision' && parsedLabel && decision && (
             <div className="space-y-4 animate-card-rise">
-              {/* การ์ดคำตัดสินสุขภาพ (Decision Card) */}
+              {/* การ์ดคำตัดสินสุขภาพ (Decision Card) — แสดงเมื่อมีค่าพลังงานแล้ว */}
+              {parsedLabel.calories > 0 && (
               <div
                 className={`p-4 rounded-2xl border ${
                   decision.verdict === 'unsafe'
@@ -396,6 +459,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                   </div>
                 )}
               </div>
+              )}
 
               {/* ฟอร์มตรวจสอบและแก้ไขตัวเลข */}
               <div className="bg-sand-50/70 p-4 rounded-2xl border border-sand-200/80 space-y-3">
@@ -504,10 +568,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
             <>
               <button
                 type="button"
-                onClick={() => {
-                  setStep('camera');
-                  startCamera();
-                }}
+                onClick={handleRetake}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-ink-600 hover:bg-sand-100"
               >
                 <ChevronLeft className="w-4 h-4" />
