@@ -13,6 +13,11 @@ import {
 } from './types';
 
 export const TARGET_WATER_GLASSES = 8;
+export const ML_PER_GLASS = 250;
+
+export function formatWaterMl(glasses: number): string {
+  return `${(Math.max(0, glasses) * ML_PER_GLASS).toLocaleString()} มล.`;
+}
 export const XP_PER_LEVEL = 150;
 
 const THAI_DAY_SHORT = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];

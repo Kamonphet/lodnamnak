@@ -8,6 +8,7 @@ import {
   Scale,
   Trophy,
 } from 'lucide-react';
+import { ML_PER_GLASS } from '../domain/gamification';
 import { formatDateLabel } from '../domain/progressHistory';
 import { ProgressSummary, WeightChartPoint } from '../domain/types';
 
@@ -306,9 +307,9 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
                     <div className="rounded-xl bg-white/70 p-1.5">
                       <span className="block text-[10px] text-ink-700">น้ำดื่ม</span>
                       <span className="block font-bold text-xs text-sky-600">
-                        {item.waterGlasses}
+                        {(item.waterGlasses * ML_PER_GLASS).toLocaleString()}
                       </span>
-                      <span className="block text-[9px] text-ink-700">แก้ว</span>
+                      <span className="block text-[9px] text-ink-700">มล.</span>
                     </div>
 
                     {/* เบิร์นออกกำลัง */}
