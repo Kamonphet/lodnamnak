@@ -148,14 +148,14 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
           )}
         </div>
 
-        {/* กล่องกราฟ SVG */}
+        {/* กล่องกราฟ: เส้นวาดด้วย SVG แบบยืดเต็มกล่อง ส่วนจุดเป็น HTML เพื่อให้กลมเสมอ */}
         <div className="rounded-2xl glass-subtle p-3">
           <div className="relative w-full h-36">
             <svg
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
-              className="w-full h-full overflow-visible"
-              aria-label="กราฟแนวโน้มน้ำหนัก"
+              className="absolute inset-0 w-full h-full overflow-visible"
+              aria-hidden="true"
             >
               <defs>
                 <linearGradient id="chart-area-grad" x1="0" y1="0" x2="0" y2="1">
@@ -164,84 +164,70 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
                 </linearGradient>
               </defs>
 
-              {/* เส้นแนวตารางพื้นหลัง */}
+              {/* เส้นน้ำหนักเป้าหมาย */}
               <line
                 x1="0"
-                y1="25"
+                y1={progress.targetYPct}
                 x2="100"
-                y2="25"
-                stroke="rgba(20, 150, 92, 0.12)"
-                strokeWidth="0.8"
-                strokeDasharray="2 2"
-              />
-              <line
-                x1="0"
-                y1="50"
-                x2="100"
-                y2="50"
-                stroke="rgba(20, 150, 92, 0.12)"
-                strokeWidth="0.8"
-                strokeDasharray="2 2"
-              />
-              <line
-                x1="0"
-                y1="75"
-                x2="100"
-                y2="75"
-                stroke="rgba(20, 150, 92, 0.12)"
-                strokeWidth="0.8"
-                strokeDasharray="2 2"
+                y2={progress.targetYPct}
+                stroke="rgba(11, 118, 206, 0.45)"
+                strokeWidth="1.2"
+                strokeDasharray="4 3"
+                vectorEffect="non-scaling-stroke"
               />
 
-              {/* พื้นที่ใต้กราฟ */}
-              {areaPathD && (
-                <path d={areaPathD} fill="url(#chart-area-grad)" />
+              {areaPathD && <path d={areaPathD} fill="url(#chart-area-grad)" />}
+
+              {progress.chartPoints.length > 1 && (
+                <path
+                  d={svgPathD}
+                  fill="none"
+                  stroke="#14965C"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
               )}
-
-              {/* เส้นกราฟน้ำหนัก */}
-              <path
-                d={svgPathD}
-                fill="none"
-                stroke="#14965C"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-
-              {/* จุดข้อมูลแต่ละวัน */}
-              {progress.chartPoints.map((pt, idx) => {
-                const isActive = activePointIndex === idx;
-                return (
-                  <g
-                    key={pt.dateKey + idx}
-                    className="cursor-pointer"
-                    onClick={() => setActivePointIndex(idx)}
-                  >
-                    <circle
-                      cx={pt.xPct}
-                      cy={pt.yPct}
-                      r={isActive ? 4.5 : 2.8}
-                      fill={isActive ? '#14965C' : '#FFFFFF'}
-                      stroke="#14965C"
-                      strokeWidth={isActive ? 2 : 1.5}
-                    />
-                  </g>
-                );
-              })}
             </svg>
+
+            <span
+              className="absolute right-0 -translate-y-full pb-0.5 text-[10px] font-semibold text-sky-700 tabular-data"
+              style={{ top: `${progress.targetYPct}%` }}
+            >
+              เป้า {progress.targetWeightKg} กก.
+            </span>
+
+            {progress.chartPoints.map((pt, idx) => {
+              const isActive = activePointIndex === idx;
+              return (
+                <button
+                  key={pt.dateKey}
+                  type="button"
+                  onClick={() => setActivePointIndex(idx)}
+                  aria-label={`${pt.dateLabel} ${pt.weightKg} กก.`}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center"
+                  style={{ left: `${pt.xPct}%`, top: `${pt.yPct}%` }}
+                >
+                  <span
+                    className={`block rounded-full border-2 border-sage-600 transition-all ${
+                      isActive ? 'w-3.5 h-3.5 bg-sage-600' : 'w-2.5 h-2.5 bg-white'
+                    }`}
+                  />
+                </button>
+              );
+            })}
           </div>
 
-          {/* ป้ายกำกับแกน X (วันแรกและวันล่าสุด) */}
           {progress.chartPoints.length > 0 && (
             <div className="flex items-center justify-between text-[10px] text-ink-700 font-semibold pt-2 border-t border-white/60 tabular-data">
               <span>{progress.chartPoints[0].dateLabel}</span>
-              <span className="text-sage-700">แตะจุดเพื่อดูค่าน้ำหนัก</span>
-              <span>
-                {
-                  progress.chartPoints[progress.chartPoints.length - 1]
-                    .dateLabel
-                }
-              </span>
+              {progress.chartPoints.length === 1 && (
+                <span className="text-sage-700">ชั่งครั้งถัดไปเพื่อเริ่มเห็นแนวโน้ม</span>
+              )}
+              {progress.chartPoints.length > 1 && (
+                <span>{progress.chartPoints[progress.chartPoints.length - 1].dateLabel}</span>
+              )}
             </div>
           )}
         </div>

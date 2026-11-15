@@ -19,7 +19,9 @@ import { DashboardTab } from './components/DashboardTab';
 import { FoodTrackerTab } from './components/FoodTrackerTab';
 import { LiquidToastViewport, ToastMessage } from './components/LiquidToast';
 import { OnboardingWizard } from './components/OnboardingWizard';
+import { WeighInReminderModal } from './components/WeighInReminderModal';
 import { WorkoutPlanTab } from './components/WorkoutPlanTab';
+import { daysSinceLastWeighIn, shouldShowWeighInReminder } from './domain/appSettings';
 import { useHealthStore } from './state/useHealthStore';
 
 type ActiveTab = 'dashboard' | 'food' | 'workout' | 'coach';
@@ -51,6 +53,8 @@ export const App: React.FC = () => {
   } | null>(null);
 
   const showOnboarding = !store.profile || !store.metrics || wizardMode !== 'none';
+  const showWeighInReminder =
+    !showOnboarding && shouldShowWeighInReminder(store.weightHistory, store.appSettings);
   const activeNavIndex = Math.max(
     0,
     NAV_ITEMS.findIndex((item) => item.id === activeTab)
@@ -195,6 +199,21 @@ export const App: React.FC = () => {
       {/* แจ้งเตือนลอยตัว & หน้าต่างยืนยัน */}
       <LiquidToastViewport toasts={toasts} onDismiss={dismissToast} />
       <ConfirmDialog dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />
+      {store.profile && (
+        <WeighInReminderModal
+          open={showWeighInReminder}
+          lastWeightKg={store.profile.currentWeightKg}
+          daysSince={daysSinceLastWeighIn(store.weightHistory)}
+          onSnooze={store.snoozeWeighInReminder}
+          onSubmit={(kg) => {
+            const res = store.reportNewWeight(kg);
+            if (res.ok) {
+              pushToast({ title: `บันทึกน้ำหนัก ${kg} กก.`, tone: 'success' });
+            }
+            return res;
+          }}
+        />
+      )}
 
       <div className="w-full max-w-md min-h-dvh flex flex-col relative z-10">
         {/* แถบด้านบนสไตล์ Liquid Glass พร้อมไอคอนประจำแอป */}

@@ -404,6 +404,8 @@ export interface ProgressSummary {
   totalBurnedCalories: number;
   totalTrackedDays: number;
   chartPoints: WeightChartPoint[];
+  /** ตำแหน่งแกน Y (0–100) ของเส้นน้ำหนักเป้าหมาย */
+  targetYPct: number;
   dailyHistory: DailyHistoryEntry[];
 }
 
@@ -419,6 +421,15 @@ export interface UserAccountRecord {
   waterLogs?: Record<string, number>;
   completedWorkoutDays?: Record<string, boolean>;
   completedWorkoutWeek?: string;
+  appSettings?: AppSettings;
+}
+
+export interface AppSettings {
+  /** เตือนชั่งน้ำหนักเมื่อไม่ได้ชั่งครบตามจำนวนวัน */
+  weighInReminder: boolean;
+  weighInIntervalDays: number;
+  /** ไม่เตือนจนถึงวันนี้ (YYYY-MM-DD) */
+  weighInSnoozedUntil?: string;
 }
 
 /**

@@ -13,10 +13,17 @@ import {
   Trash2,
 } from 'lucide-react';
 import {
+  calculateBurnFromMet,
   calculateExerciseBurn,
   EXERCISE_CATALOG,
+  ExerciseBurnOverride,
   INTENSITY_LABELS,
 } from '../domain/exercisePlanner';
+import {
+  findMetActivityByLabel,
+  MetActivity,
+  searchMetActivities,
+} from '../domain/metActivities';
 import {
   ExerciseIntensity,
   ExerciseLogItem,
@@ -37,7 +44,8 @@ interface WorkoutPlanTabProps {
     type: ExerciseType,
     durationMinutes: number,
     intensity: ExerciseIntensity,
-    customLabel?: string
+    customLabel?: string,
+    override?: ExerciseBurnOverride
   ) => void;
   onRemoveExercise: (id: string) => void;
   onUpdateWorkoutDays: (days: number) => void;
@@ -103,21 +111,39 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
   );
   const [intensity, setIntensity] = useState<ExerciseIntensity>('moderate');
   const [justLogged, setJustLogged] = useState(false);
+  const [pickedActivity, setPickedActivity] = useState<MetActivity | null>(null);
+  const [manualKcalStr, setManualKcalStr] = useState('');
   const checkedDays = completedDays ?? {};
 
+  const isCustom = selectedType === 'custom';
   const durationNum = Math.max(5, Math.min(240, Number(durationStr) || 30));
-  const previewBurn = calculateExerciseBurn(
-    profile.currentWeightKg,
-    selectedType,
-    durationNum,
-    intensity
-  );
+  const manualKcal = Number(manualKcalStr) > 0 ? Math.round(Number(manualKcalStr)) : undefined;
+  // กิจกรรมระบุเอง: ใช้ kcal ที่กรอก > MET จากตาราง > ไม่คำนวณ
+  const matchedActivity = isCustom
+    ? pickedActivity ?? findMetActivityByLabel(customTitle) ?? null
+    : null;
+  const activitySuggestions =
+    isCustom && !matchedActivity ? searchMetActivities(customTitle) : [];
+  const previewBurn: number | null = !isCustom
+    ? calculateExerciseBurn(profile.currentWeightKg, selectedType, durationNum, intensity)
+    : manualKcal ??
+      (matchedActivity
+        ? calculateBurnFromMet(profile.currentWeightKg, matchedActivity.mets[intensity], durationNum)
+        : null);
+  const canSubmit = !isCustom || (customTitle.trim().length > 0 && previewBurn !== null);
+
+  const selectCustomTitle = (title: string, activity: MetActivity | null) => {
+    setSelectedType('custom');
+    setCustomTitle(title);
+    setPickedActivity(activity);
+    setManualKcalStr('');
+  };
 
   const activeDaysCount = weeklySchedule.filter((d) => d.focusType !== 'recovery').length;
 
   const handleLogWorkout = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedType === 'custom' && !customTitle.trim()) return;
+    if (!canSubmit || previewBurn === null) return;
     const label =
       selectedType === 'custom'
         ? customTitle.trim()
@@ -126,7 +152,12 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
       selectedType,
       durationNum,
       intensity,
-      selectedType === 'custom' ? customTitle.trim() : undefined
+      isCustom ? customTitle.trim() : undefined,
+      isCustom
+        ? manualKcal !== undefined
+          ? { manualKcal }
+          : { met: matchedActivity?.mets[intensity] }
+        : undefined
     );
     setJustLogged(true);
     window.setTimeout(() => setJustLogged(false), 1100);
@@ -135,8 +166,8 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
       detail: `เผาผลาญ ~${previewBurn} kcal`,
       tone: 'energy',
     });
-    if (selectedType === 'custom') {
-      setCustomTitle('');
+    if (isCustom) {
+      selectCustomTitle('', null);
     }
   };
 
@@ -200,6 +231,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                   onClick={() => {
                     setSelectedType(exKey);
                     setDurationStr(String(EXERCISE_CATALOG[exKey].defaultMinutes));
+                    if (exKey === 'custom') selectCustomTitle('', null);
                   }}
                   className={`tactile-btn py-1.5 px-3 rounded-full text-xs font-semibold ${
                     active ? 'glass-btn-primary' : 'glass-pill text-ink-900'
@@ -216,10 +248,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                 <button
                   key={sport}
                   type="button"
-                  onClick={() => {
-                    setSelectedType('custom');
-                    setCustomTitle(sport);
-                  }}
+                  onClick={() => selectCustomTitle(sport, findMetActivityByLabel(sport) ?? searchMetActivities(sport, 1)[0] ?? null)}
                   className={`tactile-btn py-1.5 px-3 rounded-full text-xs font-semibold ${
                     isCustomSelected ? 'glass-btn-warm' : 'glass-alert-warn text-peach-800'
                   }`}
@@ -230,16 +259,57 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
             })}
           </div>
 
-          {selectedType === 'custom' && (
-            <input
-              id="custom-ex-title"
-              type="text"
-              value={customTitle}
-              onChange={(e) => setCustomTitle(e.target.value)}
-              placeholder="ชื่อกิจกรรม เช่น ตีเทนนิส, กระโดดเชือก"
-              aria-label="ชื่อกิจกรรม"
-              className="w-full min-h-[44px] rounded-2xl glass-input px-3.5 text-sm text-ink-900 animate-list-item"
-            />
+          {isCustom && (
+            <div className="space-y-2 animate-list-item">
+              <input
+                id="custom-ex-title"
+                type="text"
+                value={customTitle}
+                onChange={(e) => {
+                  setCustomTitle(e.target.value);
+                  if (pickedActivity && e.target.value !== pickedActivity.label) {
+                    setPickedActivity(null);
+                  }
+                }}
+                placeholder="ชื่อกิจกรรม เช่น เทนนิส, กระโดดเชือก"
+                aria-label="ชื่อกิจกรรม"
+                className="w-full min-h-[44px] rounded-2xl glass-input px-3.5 text-sm text-ink-900"
+              />
+              {activitySuggestions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {activitySuggestions.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => selectCustomTitle(a.label, a)}
+                      className="tactile-btn py-1 px-2.5 rounded-full glass-pill text-[11px] font-semibold text-ink-900"
+                    >
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <label htmlFor="ex-manual-kcal" className="text-xs font-semibold text-ink-700 shrink-0">
+                  kcal
+                </label>
+                <input
+                  id="ex-manual-kcal"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={5000}
+                  value={manualKcalStr}
+                  onChange={(e) => setManualKcalStr(e.target.value)}
+                  placeholder={
+                    matchedActivity
+                      ? String(calculateBurnFromMet(profile.currentWeightKg, matchedActivity.mets[intensity], durationNum))
+                      : 'จากนาฬิกา / เครื่อง'
+                  }
+                  className="w-full min-h-[40px] rounded-2xl glass-input px-3 text-sm font-bold text-ink-900 tabular-data"
+                />
+              </div>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-2.5">
@@ -278,11 +348,11 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
 
           <div className="rounded-2xl glass-subtle-active p-3 flex items-center justify-between gap-2">
             <span className="text-lg font-bold text-sage-700 tabular-data">
-              ~{previewBurn} kcal
+              {previewBurn === null ? '— kcal' : `${manualKcal !== undefined && isCustom ? '' : '~'}${previewBurn} kcal`}
             </span>
             <button
               type="submit"
-              disabled={selectedType === 'custom' && !customTitle.trim()}
+              disabled={!canSubmit}
               className="tactile-btn min-h-[42px] rounded-2xl glass-btn-primary disabled:opacity-50 px-4 text-xs font-bold inline-flex items-center gap-1.5"
             >
               {justLogged ? (

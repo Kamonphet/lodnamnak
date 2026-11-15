@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Camera,
@@ -234,11 +235,15 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-ink-900/60 backdrop-blur-md animate-toast-in">
-      <div className="w-full max-w-lg bg-surface-primary rounded-3xl shadow-modal overflow-hidden flex flex-col max-h-[92vh] border border-white/60">
+  // Portal ไปที่ body เพื่อไม่ให้ parent ที่มี transform/backdrop-filter ดึงตำแหน่ง fixed ไปผิดที่ และให้อยู่เหนือแถบเมนู
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center sm:p-3 bg-ink-900/60 backdrop-blur-md animate-toast-in">
+      <div className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-lg bg-surface-primary sm:rounded-3xl shadow-modal overflow-hidden flex flex-col sm:border sm:border-white/60">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-sand-100 flex items-center justify-between bg-white/70">
+        <div
+          className="px-5 pb-3 pt-3 border-b border-sand-100 flex items-center justify-between bg-white/70"
+          style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+        >
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-sage-500/15 flex items-center justify-center text-sage-600">
               <Camera className="w-4 h-4" />
@@ -260,11 +265,11 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 flex flex-col">
           {/* STEP 1: หน้ากล้องสด */}
           {step === 'camera' && (
-            <div className="space-y-4">
-              <div className="relative aspect-[3/4] max-h-[360px] bg-ink-900 rounded-2xl overflow-hidden flex items-center justify-center border border-sand-200">
+            <div className="flex-1 min-h-0 flex flex-col gap-4">
+              <div className="relative flex-1 min-h-[280px] sm:aspect-[3/4] sm:max-h-[440px] bg-ink-900 rounded-2xl overflow-hidden flex items-center justify-center border border-sand-200">
                 {cameraError ? (
                   <div className="p-4 text-center space-y-3 text-white">
                     <AlertTriangle className="w-10 h-10 mx-auto text-sunny-400" />
@@ -306,7 +311,10 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
               </div>
 
               {/* ปุ่มชัตเตอร์ และปุ่มอัปโหลด */}
-              <div className="flex items-center justify-center gap-4 pt-2">
+              <div
+                className="flex items-center justify-center gap-4 pt-1 shrink-0"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+              >
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -562,9 +570,12 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-5 py-3 border-t border-sand-100 flex items-center justify-between bg-white/70">
-          {step === 'review_decision' ? (
+        {/* Footer Actions (หน้าตรวจสอบเท่านั้น; ขั้นอื่นปิดด้วยปุ่ม X) */}
+        {step === 'review_decision' && (
+        <div
+          className="px-5 pt-3 border-t border-sand-100 flex items-center justify-between bg-white/70"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        >
             <>
               <button
                 type="button"
@@ -589,19 +600,10 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                 บันทึกอาหารมื้อนี้
               </button>
             </>
-          ) : (
-            <div className="w-full flex justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-ink-600 hover:bg-sand-100"
-              >
-                ยกเลิก
-              </button>
-            </div>
-          )}
         </div>
+        )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

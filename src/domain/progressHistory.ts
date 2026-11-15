@@ -93,19 +93,17 @@ export function calculateProgressSummary(
   );
 
   // รวบรวมและจัดลำดับประวัติน้ำหนักจากอดีตไปปัจจุบัน (Oldest -> Newest)
-  const sortedWeightHistory = [...weightHistory].sort((a, b) =>
-    a.dateKey.localeCompare(b.dateKey)
-  );
-
-  const rawPoints: { dateKey: string; weightKg: number }[] = [];
-  const seenDates = new Set<string>();
-
-  for (const w of sortedWeightHistory) {
-    if (!seenDates.has(w.dateKey)) {
-      seenDates.add(w.dateKey);
-      rawPoints.push({ dateKey: w.dateKey, weightKg: w.weightKg });
+  // วันเดียวกันชั่งหลายครั้ง ใช้ค่าล่าสุดของวันนั้น
+  const latestByDate = new Map<string, { weightKg: number; timestamp: string }>();
+  for (const w of weightHistory) {
+    const prev = latestByDate.get(w.dateKey);
+    if (!prev || (w.timestamp ?? '') >= prev.timestamp) {
+      latestByDate.set(w.dateKey, { weightKg: w.weightKg, timestamp: w.timestamp ?? '' });
     }
   }
+  const rawPoints: { dateKey: string; weightKg: number }[] = [...latestByDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dateKey, v]) => ({ dateKey, weightKg: v.weightKg }));
 
   if (rawPoints.length === 0) {
     rawPoints.push({
@@ -120,10 +118,16 @@ export function calculateProgressSummary(
   const maxW = Math.max(...allWeights) + 0.8;
   const rangeW = maxW - minW || 1;
 
-  const totalPoints = rawPoints.length;
-  const chartPoints: WeightChartPoint[] = rawPoints.map((p, idx) => {
+  // แกน X ตามระยะเวลาจริง (วัน) ไม่ใช่ลำดับจุด
+  const dayMs = 86_400_000;
+  const toDayNum = (key: string) => Math.round(new Date(`${key}T00:00:00`).getTime() / dayMs);
+  const firstDay = toDayNum(rawPoints[0].dateKey);
+  const spanDays = Math.max(0, toDayNum(rawPoints[rawPoints.length - 1].dateKey) - firstDay);
+  const chartPoints: WeightChartPoint[] = rawPoints.map((p) => {
     const xPct =
-      totalPoints === 1 ? 50 : Math.round((idx / (totalPoints - 1)) * 100);
+      spanDays === 0
+        ? 50
+        : Math.round(((toDayNum(p.dateKey) - firstDay) / spanDays) * 100);
     const yPct = Math.max(
       8,
       Math.min(92, Math.round(((maxW - p.weightKg) / rangeW) * 100))
@@ -193,6 +197,7 @@ export function calculateProgressSummary(
     totalBurnedCalories,
     totalTrackedDays: allDateKeys.size,
     chartPoints,
+    targetYPct: Math.max(8, Math.min(92, Math.round(((maxW - targetWeightKg) / rangeW) * 100))),
     dailyHistory,
   };
 }

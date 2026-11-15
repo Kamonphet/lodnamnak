@@ -145,9 +145,33 @@ export function calculateExerciseBurn(
     return 0;
   }
   const meta = EXERCISE_CATALOG[exerciseType] ?? EXERCISE_CATALOG.custom;
-  const met = meta.mets[intensity];
+  return calculateBurnFromMet(weightKg, meta.mets[intensity], durationMinutes);
+}
+
+export function calculateBurnFromMet(
+  weightKg: number,
+  met: number,
+  durationMinutes: number
+): number {
+  if (
+    !Number.isFinite(weightKg) ||
+    weightKg <= 0 ||
+    !Number.isFinite(met) ||
+    met <= 0 ||
+    !Number.isFinite(durationMinutes) ||
+    durationMinutes <= 0
+  ) {
+    return 0;
+  }
   const burned = ((met * 3.5 * weightKg) / 200) * durationMinutes;
   return Math.max(5, Math.round(burned / 5) * 5);
+}
+
+export interface ExerciseBurnOverride {
+  /** MET ของกิจกรรมที่เลือกจากตาราง (ใช้แทนค่าของประเภท custom) */
+  met?: number;
+  /** kcal ที่ผู้ใช้กรอกเอง (มีลำดับความสำคัญสูงสุด) */
+  manualKcal?: number;
 }
 
 export function createExerciseLogItem(
@@ -156,15 +180,19 @@ export function createExerciseLogItem(
   durationMinutes: number,
   intensity: ExerciseIntensity = 'moderate',
   dateKey: string = getLocalDateKey(),
-  customLabel?: string
+  customLabel?: string,
+  override?: ExerciseBurnOverride
 ): ExerciseLogItem {
   const meta = EXERCISE_CATALOG[exerciseType] ?? EXERCISE_CATALOG.custom;
-  const burnedCalories = calculateExerciseBurn(
-    weightKg,
-    exerciseType,
-    durationMinutes,
-    intensity
-  );
+  const manual =
+    override?.manualKcal !== undefined && Number.isFinite(override.manualKcal) && override.manualKcal > 0
+      ? Math.round(Math.min(5000, override.manualKcal))
+      : undefined;
+  const burnedCalories =
+    manual ??
+    (override?.met
+      ? calculateBurnFromMet(weightKg, override.met, durationMinutes)
+      : calculateExerciseBurn(weightKg, exerciseType, durationMinutes, intensity));
 
   return {
     id: `ex-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -175,7 +203,7 @@ export function createExerciseLogItem(
     durationMinutes: Math.round(durationMinutes),
     intensity,
     burnedCalories,
-    isEstimated: true,
+    isEstimated: manual === undefined,
   };
 }
 

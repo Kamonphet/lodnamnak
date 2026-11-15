@@ -3,6 +3,7 @@ import { processCoachMessage } from '../domain/coachAssistant';
 import {
   createExerciseLogItem,
   EXERCISE_CATALOG,
+  ExerciseBurnOverride,
   generateWeeklySchedule,
 } from '../domain/exercisePlanner';
 import {
@@ -39,6 +40,11 @@ import {
 } from '../domain/gamification';
 import { calculateProgressSummary } from '../domain/progressHistory';
 import {
+  DEFAULT_APP_SETTINGS,
+  getTomorrowKey,
+  sanitizeAppSettings,
+} from '../domain/appSettings';
+import {
   AvatarAccessoryId,
   CoachChatMessage,
   DailyMealPlan,
@@ -63,6 +69,7 @@ import {
   UserProfile,
   WeeklyActivityLevel,
   WeightCheckIn,
+  AppSettings,
 } from '../domain/types';
 
 const MULTI_STORAGE_KEY = 'lodnamnak_accounts_v2';
@@ -548,6 +555,7 @@ export function sanitizeAccountRecord(
     ...(waterLogs ? { waterLogs } : {}),
     ...(completedWorkoutDays ? { completedWorkoutDays } : {}),
     completedWorkoutWeek,
+    appSettings: sanitizeAppSettings(raw.appSettings),
   };
 }
 
@@ -1150,7 +1158,8 @@ export function useHealthStore() {
       exerciseType: ExerciseType,
       durationMinutes: number,
       intensity: ExerciseIntensity,
-      customLabel?: string
+      customLabel?: string,
+      override?: ExerciseBurnOverride
     ) => {
       updateActiveAccount((acc) => {
         const item = createExerciseLogItem(
@@ -1159,7 +1168,8 @@ export function useHealthStore() {
           durationMinutes,
           intensity,
           todayKey(),
-          customLabel
+          customLabel,
+          override
         );
         return {
           ...acc,
@@ -1169,6 +1179,23 @@ export function useHealthStore() {
     },
     [updateActiveAccount]
   );
+
+  const updateAppSettings = useCallback(
+    (patch: Partial<AppSettings>) => {
+      updateActiveAccount((acc) => ({
+        ...acc,
+        appSettings: sanitizeAppSettings({ ...(acc.appSettings ?? DEFAULT_APP_SETTINGS), ...patch }),
+      }));
+    },
+    [updateActiveAccount]
+  );
+
+  const snoozeWeighInReminder = useCallback(() => {
+    updateActiveAccount((acc) => ({
+      ...acc,
+      appSettings: { ...(acc.appSettings ?? DEFAULT_APP_SETTINGS), weighInSnoozedUntil: getTomorrowKey(todayKey()) },
+    }));
+  }, [updateActiveAccount]);
 
   const removeExerciseLog = useCallback(
     (id: string) => {
@@ -1348,5 +1375,8 @@ export function useHealthStore() {
     removeExerciseLog,
     reportNewWeight,
     sendCoachChat,
+    appSettings: activeAccount?.appSettings ?? DEFAULT_APP_SETTINGS,
+    updateAppSettings,
+    snoozeWeighInReminder,
   };
 }
