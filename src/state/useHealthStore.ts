@@ -9,7 +9,7 @@ import {
 import {
   analyzeEatingHabit,
   createCustomFoodLogItem,
-  parseThaiFoodInput,
+  parseFoodInput,
 } from '../domain/foodAnalyzer';
 import {
   calculateGoalTimelines,
@@ -39,6 +39,7 @@ import {
   VALID_AVATAR_ACCESSORIES,
 } from '../domain/gamification';
 import { calculateProgressSummary } from '../domain/progressHistory';
+import { createFoodLogFromEntry, FoodEntry } from '../domain/foodDatabase';
 import {
   DailyNudge,
   DEFAULT_APP_SETTINGS,
@@ -980,13 +981,26 @@ export function useHealthStore() {
 
   const addFoodByText = useCallback(
     (rawText: string) => {
-      const items = parseThaiFoodInput(rawText, todayKey());
-      if (items.length === 0) return [];
+      const parsed = parseFoodInput(rawText, todayKey());
+      if (parsed.items.length > 0) {
+        updateActiveAccount((acc) => ({
+          ...acc,
+          foodLogs: [...parsed.items, ...acc.foodLogs],
+        }));
+      }
+      return parsed;
+    },
+    [updateActiveAccount]
+  );
+
+  const addFoodEntry = useCallback(
+    (food: FoodEntry, multiplier: number) => {
+      const item = createFoodLogFromEntry(food, multiplier, todayKey());
       updateActiveAccount((acc) => ({
         ...acc,
-        foodLogs: [...items, ...acc.foodLogs],
+        foodLogs: [item, ...acc.foodLogs],
       }));
-      return items;
+      return item;
     },
     [updateActiveAccount]
   );
@@ -1395,6 +1409,7 @@ export function useHealthStore() {
     adjustTodayWater,
     equipAvatarAccessory,
     addFoodByText,
+    addFoodEntry,
     addCustomFood,
     addProductFood,
     removeFoodLog,

@@ -50,6 +50,9 @@ export default defineConfig({
           if (id.includes('node_modules/three')) {
             return 'three';
           }
+          if (id.includes('/src/data/foods.json')) {
+            return 'food-data';
+          }
           return undefined;
         },
       },

@@ -261,10 +261,10 @@ export function processCoachMessage(
         : `วันนี้เกินเป้าหมายเล็กน้อย (${Math.abs(remaining).toLocaleString()} kcal) แต่ยังกลับมาอยู่ในแผนได้ในมื้อถัดไปแบบไม่ต้องกดดันตัวเองนะครับ`;
 
     return {
-      badge: 'บันทึกมื้ออาหาร (ค่าประมาณ)',
+      badge: 'บันทึกมื้ออาหาร',
       addedFoods: parsedFoods,
       replyText:
-        `บันทึกมื้ออาหารเรียบร้อยครับ (ตัวเลขเป็นค่าประมาณ):\n${itemLines}\n\n` +
+        `บันทึกมื้ออาหารเรียบร้อยครับ (ค่าจาก Thai FCD ตามขนาดจานมาตรฐาน):\n${itemLines}\n\n` +
         `รวมมื้อนี้: ~${mealCalories} kcal | โปรตีน ~${mealProtein}g | คาร์บ ~${mealCarbs}g | ไขมัน ~${mealFat}g\n` +
         `เป้าหมายวันนี้: ${currentMetrics.recommendedDailyCalories.toLocaleString()} kcal · รับประทานแล้ว: ${newConsumedTotal.toLocaleString()} kcal\n` +
         statusLine,

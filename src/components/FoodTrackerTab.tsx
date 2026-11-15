@@ -12,7 +12,8 @@ import {
   Utensils,
   X,
 } from 'lucide-react';
-import { getPersonalizedMealSuggestions } from '../domain/foodAnalyzer';
+import { getPersonalizedMealSuggestions, ParsedFoodInput } from '../domain/foodAnalyzer';
+import { FoodEntry, formatFoodPortion, searchFoods } from '../domain/foodDatabase';
 import {
   checkProductDietaryConflict,
   scaleOpenFoodProduct,
@@ -53,7 +54,8 @@ interface FoodTrackerTabProps {
   };
   targetCarbsGrams: number;
   targetFatGrams: number;
-  onAddFoodText: (rawText: string) => FoodLogItem[];
+  onAddFoodText: (rawText: string) => ParsedFoodInput;
+  onAddFoodEntry: (food: FoodEntry, multiplier: number) => FoodLogItem;
   onAddCustomFood: (params: {
     name: string;
     calories: number;
@@ -100,6 +102,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
   targetCarbsGrams,
   targetFatGrams,
   onAddFoodText,
+  onAddFoodEntry,
   onAddCustomFood,
   onAddProductFood,
   onRemoveFood,
@@ -125,6 +128,10 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
   const [offMultipliers, setOffMultipliers] = useState<
     Record<string, ServingMultiplier>
   >({});
+
+  const [dbMultipliers, setDbMultipliers] = useState<Record<string, ServingMultiplier>>({});
+  const [unmatchedNotice, setUnmatchedNotice] = useState<string | null>(null);
+  const dbMatches = useMemo(() => searchFoods(foodInput, 5), [foodInput]);
 
   const [customName, setCustomName] = useState('');
   const [customKcal, setCustomKcal] = useState('');
@@ -216,17 +223,43 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
     });
   };
 
-  const logFoodWithToast = (raw: string) => {
-    const items = onAddFoodText(raw);
+  const handleSelectDbFood = (food: FoodEntry, mult: ServingMultiplier = 1) => {
+    const added = onAddFoodEntry(food, mult);
+    flashAddedState();
+    setFoodInput('');
+    setUnmatchedNotice(null);
+    onNotify?.({
+      title: `บันทึก ${added.normalizedName}`,
+      detail: `+${added.calories} kcal · P ${added.proteinGrams}g`,
+      tone: 'success',
+    });
+  };
+
+  /** คืนค่า true ถ้าบันทึกได้ครบทุกรายการ */
+  const logFoodWithToast = (raw: string): boolean => {
+    const { items, unmatched } = onAddFoodText(raw);
     if (items.length > 0) {
       const totalKcal = items.reduce((sum, item) => sum + item.calories, 0);
       flashAddedState();
       onNotify?.({
         title: `เพิ่ม ${items.map((i) => i.normalizedName).join(', ')}`,
-        detail: `+~${totalKcal} kcal`,
+        detail: `+${totalKcal} kcal`,
         tone: 'success',
       });
     }
+    if (unmatched.length > 0) {
+      setUnmatchedNotice(unmatched.join(', '));
+      return false;
+    }
+    setUnmatchedNotice(null);
+    return true;
+  };
+
+  const openManualEntry = (name: string) => {
+    setCustomName(name);
+    setUnmatchedNotice(null);
+    setFoodInput('');
+    setMode('manual');
   };
 
   const handleFoodSubmit = (e: React.FormEvent) => {
@@ -238,9 +271,10 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
       handleSelectOffProduct(offMatches[0], offMultipliers[code] ?? 1);
       return;
     }
-    logFoodWithToast(trimmed);
-    setFoodInput('');
-    setOffMatches([]);
+    if (logFoodWithToast(trimmed)) {
+      setFoodInput('');
+      setOffMatches([]);
+    }
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -465,6 +499,77 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                       <span>{justAdded ? 'เพิ่มแล้ว' : 'เพิ่ม'}</span>
                     </button>
                   </form>
+
+                  {unmatchedNotice && (
+                    <div className="rounded-2xl glass-alert-warn p-3 flex items-center justify-between gap-2 animate-list-item">
+                      <span className="text-xs font-semibold text-peach-900 min-w-0">
+                        ไม่พบ "{unmatchedNotice}"
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openManualEntry(unmatchedNotice)}
+                        className="tactile-btn min-h-[32px] rounded-xl glass-pill px-3 text-xs font-bold text-ink-900 shrink-0"
+                      >
+                        กรอกเอง
+                      </button>
+                    </div>
+                  )}
+
+                  {/* เมนูจากฐานข้อมูล Thai FCD */}
+                  {dbMatches.length > 0 && (
+                    <div className="rounded-2xl glass-card-mint p-3 space-y-2 animate-list-item">
+                      <span className="text-[11px] font-bold text-ink-900 inline-flex items-center gap-1.5">
+                        <Utensils className="w-3.5 h-3.5 text-sage-600" />
+                        เมนูในฐานข้อมูล
+                      </span>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-0.5">
+                        {dbMatches.map((food) => {
+                          const mult = dbMultipliers[food.id] ?? 1;
+                          return (
+                            <div key={food.id} className="rounded-xl glass-subtle p-2.5 space-y-1.5">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <span className="text-xs font-bold text-ink-900 block">{food.name}</span>
+                                  <span className="text-[11px] text-ink-700 tabular-data">
+                                    {formatFoodPortion(food, mult)} · P{' '}
+                                    {Math.round(food.protein * mult)}g · C {Math.round(food.carbs * mult)}g · F{' '}
+                                    {Math.round(food.fat * mult)}g
+                                  </span>
+                                </div>
+                                <span className="text-xs font-bold text-sage-700 shrink-0 tabular-data">
+                                  {Math.round(food.kcal * mult)} kcal
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1 tabular-data">
+                                  {MULTIPLIERS.map((m) => (
+                                    <button
+                                      key={m}
+                                      type="button"
+                                      onClick={() => setDbMultipliers((prev) => ({ ...prev, [food.id]: m }))}
+                                      className={`tactile-btn min-w-[30px] h-6 rounded-lg px-1.5 text-[11px] font-bold ${
+                                        mult === m ? 'glass-btn-primary' : 'glass-pill text-ink-700'
+                                      }`}
+                                    >
+                                      {m}x
+                                    </button>
+                                  ))}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectDbFood(food, mult)}
+                                  className="tactile-btn min-h-[30px] rounded-xl glass-btn-primary px-3 text-xs font-bold inline-flex items-center gap-1 shrink-0"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>เพิ่ม</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* ผลลัพธ์ฉลากจริงจาก Open Food Facts เฉพาะตอนพิมพ์ค้นหา */}
                   {(isOffSearching || offMatches.length > 0) && (

@@ -55,8 +55,8 @@ describe('custom exercise kcal', () => {
   it('uses MET from the activity table', () => {
     const tennis = findMetActivityByLabel('เทนนิส');
     expect(tennis).toBeDefined();
-    // 7.3 MET × 3.5 × 70 / 200 × 60 นาที ≈ 537 → ปัดเป็น 535
-    expect(calculateBurnFromMet(70, tennis!.mets.moderate, 60)).toBe(535);
+    // 6.8 MET (Compendium 15675) × 3.5 × 70 / 200 × 60 นาที ≈ 500
+    expect(calculateBurnFromMet(70, tennis!.mets.moderate, 60)).toBe(500);
     expect(searchMetActivities('กระโดด')[0]?.id).toBe('jump_rope');
   });
 });

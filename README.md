@@ -79,12 +79,30 @@ npm install
 # 2. รันโหมด Development (Vite Dev Server)
 npm run dev
 
-# 3. รันการทดสอบ Unit Tests (Vitest 28 Tests ครอบคลุมคำนวณโภชนาการ ฉลาก OCR และความปลอดภัย)
+# 3. รันการทดสอบ Unit Tests (Vitest)
 npm run test
 
 # 4. ทดสอบบิลด์ระดับ Production
 npm run build
 ```
+
+---
+
+## ข้อมูลอาหารและการออกกำลังกาย (Data)
+
+ข้อมูลหลักเก็บใน Google Sheet (แท็บ `อาหาร`, `เมนูจานเดียว`, `ออกกำลังกาย`, `แหล่งข้อมูล`) แล้วแปลงเป็นไฟล์ในแอปที่ `src/data/foods.json` และ `src/data/exercises.json`
+
+- **อาหาร**: ค่าต่อ 100 กรัมจาก Thai Food Composition Database (Thai FCD), สถาบันโภชนาการ มหาวิทยาลัยมหิดล (INMU) ใช้แบบไม่แสวงหากำไรพร้อมให้เครดิต ส่วน "กรัมต่อหน่วย" เป็นขนาดเสิร์ฟประมาณการที่แก้ได้ในชีต
+- **เมนูจานเดียว**: เมนูยอดนิยมที่ประกอบจากหลายรายการใน Thai FCD ตามน้ำหนักในจาน
+- **ออกกำลังกาย**: ค่า MET จาก 2024 Adult Compendium of Physical Activities
+
+อัปเดตข้อมูลหลังแก้ชีต: ดึงค่าของแต่ละแท็บ (ผลแบบ Sheets `values.get`) เป็นไฟล์ JSON แล้วรัน
+
+```bash
+npm run data:build -- <อาหาร.json> <เมนูจานเดียว.json> <ออกกำลังกาย.json>
+```
+
+สคริปต์ตรวจทุกแถวที่เปิดใช้ (ตัวเลขถูกต้อง, kcal สอดคล้องกับโปรตีน/คาร์บ/ไขมัน, รหัสไม่ซ้ำ) และไม่เขียนไฟล์ถ้าพบปัญหา สคริปต์ใน `scripts/data/` คือที่มาของข้อมูลชุดแรก
 
 ---
 
@@ -95,6 +113,6 @@ npm run build
 - **OCR Engine**: Tesseract.js (Client-side offline OCR สำหรับภาษาไทยและอังกฤษ)
 - **Styling & Theme**: Tailwind CSS, Liquid Glass & Pastel Bento Design System
 - **Icons**: Lucide React
-- **Data Source**: Open Food Facts REST API (Thailand / World)
+- **Data Source**: Thai FCD (INMU), 2024 Adult Compendium of Physical Activities, Open Food Facts REST API
 - **Build Tool**: Vite
 - **Testing**: Vitest

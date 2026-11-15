@@ -590,6 +590,7 @@ export const App: React.FC = () => {
                     targetCarbsGrams={store.metrics.targetCarbsGrams}
                     targetFatGrams={store.metrics.targetFatGrams}
                     onAddFoodText={store.addFoodByText}
+                    onAddFoodEntry={store.addFoodEntry}
                     onAddCustomFood={store.addCustomFood}
                     onAddProductFood={store.addProductFood}
                     onRemoveFood={store.removeFoodLog}

@@ -7,6 +7,7 @@ import {
   WeeklyActivityLevel,
   WeeklyWorkoutDay,
 } from './types';
+import exerciseData from '../data/exercises.json';
 
 export interface ExerciseMetadata {
   type: ExerciseType;
@@ -16,113 +17,53 @@ export interface ExerciseMetadata {
   defaultMinutes: number;
 }
 
-export const EXERCISE_CATALOG: Record<ExerciseType, ExerciseMetadata> = {
-  incline_walk: {
-    type: 'incline_walk',
-    label: 'เดินชัน',
-    category: 'cardio',
-    mets: { light: 4.5, moderate: 6.0, vigorous: 7.5 },
-    defaultMinutes: 30,
-  },
-  walking: {
-    type: 'walking',
-    label: 'เดินเร็ว / เดินทั่วไป',
-    category: 'cardio',
-    mets: { light: 2.8, moderate: 3.8, vigorous: 4.8 },
-    defaultMinutes: 35,
-  },
-  running: {
-    type: 'running',
-    label: 'วิ่ง',
-    category: 'cardio',
-    mets: { light: 7.0, moderate: 8.8, vigorous: 11.2 },
-    defaultMinutes: 30,
-  },
-  cycling: {
-    type: 'cycling',
-    label: 'ปั่นจักรยาน',
-    category: 'cardio',
-    mets: { light: 4.5, moderate: 6.8, vigorous: 9.5 },
-    defaultMinutes: 40,
-  },
-  swimming: {
-    type: 'swimming',
-    label: 'ว่ายน้ำ',
-    category: 'cardio',
-    mets: { light: 5.5, moderate: 7.5, vigorous: 9.8 },
-    defaultMinutes: 40,
-  },
-  weight_training: {
-    type: 'weight_training',
-    label: 'เวตเทรนนิ่ง',
-    category: 'strength',
-    mets: { light: 3.5, moderate: 5.0, vigorous: 6.2 },
-    defaultMinutes: 45,
-  },
-  dumbbell: {
-    type: 'dumbbell',
-    label: 'ดัมเบล / บอดี้เวต',
-    category: 'strength',
-    mets: { light: 3.5, moderate: 4.8, vigorous: 6.0 },
-    defaultMinutes: 40,
-  },
-  yoga: {
-    type: 'yoga',
-    label: 'โยคะ / พิลาทิส',
-    category: 'strength',
-    mets: { light: 2.5, moderate: 3.3, vigorous: 4.2 },
-    defaultMinutes: 45,
-  },
-  aerobics: {
-    type: 'aerobics',
-    label: 'เต้นแอโรบิก / ซุมบ้า',
-    category: 'cardio',
-    mets: { light: 4.2, moderate: 6.0, vigorous: 7.5 },
-    defaultMinutes: 40,
-  },
-  badminton: {
-    type: 'badminton',
-    label: 'แบดมินตัน',
-    category: 'cardio',
-    mets: { light: 4.5, moderate: 5.8, vigorous: 7.5 },
-    defaultMinutes: 45,
-  },
-  basketball: {
-    type: 'basketball',
-    label: 'บาสเกตบอล',
-    category: 'cardio',
-    mets: { light: 5.0, moderate: 6.5, vigorous: 8.5 },
-    defaultMinutes: 45,
-  },
-  football: {
-    type: 'football',
-    label: 'ฟุตบอล',
-    category: 'cardio',
-    mets: { light: 5.5, moderate: 7.2, vigorous: 9.5 },
-    defaultMinutes: 45,
-  },
-  muay_thai: {
-    type: 'muay_thai',
-    label: 'มวยไทย / คาร์ดิโอบ็อกซิ่ง',
-    category: 'hybrid',
-    mets: { light: 5.5, moderate: 7.8, vigorous: 10.0 },
-    defaultMinutes: 40,
-  },
-  hiit: {
-    type: 'hiit',
-    label: 'HIIT',
-    category: 'hybrid',
-    mets: { light: 6.5, moderate: 8.5, vigorous: 11.0 },
-    defaultMinutes: 25,
-  },
-  custom: {
+interface ExerciseDataRow {
+  id: string;
+  label: string;
+  keywords: string[];
+  category: string;
+  shortcut: boolean;
+  defaultMinutes: number;
+  mets: Record<ExerciseIntensity, number>;
+}
+
+/** ข้อมูลกิจกรรมจาก Google Sheet แท็บ "ออกกำลังกาย" (ค่า MET จาก 2024 Adult Compendium) */
+export const EXERCISE_DATA: ExerciseDataRow[] = (exerciseData as { exercises: ExerciseDataRow[] }).exercises;
+
+const SHORTCUT_TYPES: Exclude<ExerciseType, 'custom'>[] = [
+  'incline_walk', 'walking', 'running', 'cycling', 'swimming', 'weight_training', 'dumbbell',
+  'yoga', 'aerobics', 'badminton', 'basketball', 'football', 'muay_thai', 'hiit',
+];
+
+function toCategory(c: string): ExerciseMetadata['category'] {
+  return c === 'strength' ? 'strength' : c === 'cardio' ? 'cardio' : 'hybrid';
+}
+
+function buildCatalog(): Record<ExerciseType, ExerciseMetadata> {
+  const catalog = {} as Record<ExerciseType, ExerciseMetadata>;
+  for (const type of SHORTCUT_TYPES) {
+    const row = EXERCISE_DATA.find((r) => r.id === type);
+    if (!row) throw new Error(`exercises.json ไม่มีกิจกรรม ${type}`);
+    catalog[type] = {
+      type,
+      label: row.label,
+      category: toCategory(row.category),
+      mets: row.mets,
+      defaultMinutes: row.defaultMinutes,
+    };
+  }
+  // กิจกรรมที่ผู้ใช้ระบุเอง: ไม่มีค่า MET ตั้งต้น ต้องเลือกจากตารางหรือกรอก kcal เอง
+  catalog.custom = {
     type: 'custom',
     label: 'กิจกรรมอื่น ๆ (ระบุเอง)',
     category: 'hybrid',
-    mets: { light: 3.2, moderate: 5.0, vigorous: 7.2 },
+    mets: { light: 0, moderate: 0, vigorous: 0 },
     defaultMinutes: 30,
-  },
-};
+  };
+  return catalog;
+}
+
+export const EXERCISE_CATALOG: Record<ExerciseType, ExerciseMetadata> = buildCatalog();
 
 export const INTENSITY_LABELS: Record<ExerciseIntensity, string> = {
   light: 'เบา',

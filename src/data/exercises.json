@@ -1,0 +1,792 @@
+{
+ "generatedAt": "2026-11-15T18:02:04.723Z",
+ "exercises": [
+  {
+   "id": "incline_walk",
+   "label": "เดินชัน",
+   "keywords": [
+    "เดินขึ้นเนิน",
+    "เดินลู่ชัน",
+    "incline"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 5.3,
+    "moderate": 7,
+    "vigorous": 8.8
+   }
+  },
+  {
+   "id": "walking",
+   "label": "เดินเร็ว / เดินทั่วไป",
+   "keywords": [
+    "เดิน",
+    "เดินเร็ว",
+    "walk"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 35,
+   "mets": {
+    "light": 3,
+    "moderate": 3.8,
+    "vigorous": 4.8
+   }
+  },
+  {
+   "id": "running",
+   "label": "วิ่ง",
+   "keywords": [
+    "วิ่ง",
+    "จ๊อกกิ้ง",
+    "run",
+    "jogging"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 6.5,
+    "moderate": 9.3,
+    "vigorous": 11
+   }
+  },
+  {
+   "id": "cycling",
+   "label": "ปั่นจักรยาน",
+   "keywords": [
+    "จักรยาน",
+    "ปั่น",
+    "bike",
+    "cycling"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 4.3,
+    "moderate": 7,
+    "vigorous": 9
+   }
+  },
+  {
+   "id": "swimming",
+   "label": "ว่ายน้ำ",
+   "keywords": [
+    "ว่ายน้ำ",
+    "swim"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 5.8,
+    "moderate": 8,
+    "vigorous": 9.8
+   }
+  },
+  {
+   "id": "weight_training",
+   "label": "เวตเทรนนิ่ง",
+   "keywords": [
+    "เวต",
+    "ยกน้ำหนัก",
+    "weight"
+   ],
+   "category": "strength",
+   "shortcut": true,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 3.5,
+    "moderate": 5,
+    "vigorous": 6
+   }
+  },
+  {
+   "id": "dumbbell",
+   "label": "ดัมเบล / บอดี้เวต",
+   "keywords": [
+    "ดัมเบล",
+    "บอดี้เวต",
+    "bodyweight"
+   ],
+   "category": "strength",
+   "shortcut": true,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 3,
+    "moderate": 3.8,
+    "vigorous": 7.5
+   }
+  },
+  {
+   "id": "yoga",
+   "label": "โยคะ / พิลาทิส",
+   "keywords": [
+    "โยคะ",
+    "พิลาทิส",
+    "yoga",
+    "pilates"
+   ],
+   "category": "strength",
+   "shortcut": true,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 2.3,
+    "moderate": 2.8,
+    "vigorous": 4
+   }
+  },
+  {
+   "id": "aerobics",
+   "label": "เต้นแอโรบิก / ซุมบ้า",
+   "keywords": [
+    "แอโรบิก",
+    "ซุมบ้า",
+    "aerobic",
+    "zumba"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 4.8,
+    "moderate": 7.3,
+    "vigorous": 8
+   }
+  },
+  {
+   "id": "badminton",
+   "label": "แบดมินตัน",
+   "keywords": [
+    "แบด",
+    "badminton"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 5.5,
+    "moderate": 7,
+    "vigorous": 9
+   }
+  },
+  {
+   "id": "basketball",
+   "label": "บาสเกตบอล",
+   "keywords": [
+    "บาส",
+    "basketball"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 6,
+    "moderate": 7.5,
+    "vigorous": 8
+   }
+  },
+  {
+   "id": "football",
+   "label": "ฟุตบอล",
+   "keywords": [
+    "บอล",
+    "ฟุตบอล",
+    "soccer",
+    "football"
+   ],
+   "category": "cardio",
+   "shortcut": true,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 3.5,
+    "moderate": 7,
+    "vigorous": 9.5
+   }
+  },
+  {
+   "id": "muay_thai",
+   "label": "มวยไทย / คาร์ดิโอบ็อกซิ่ง",
+   "keywords": [
+    "มวย",
+    "ชกมวย",
+    "muay thai",
+    "boxing"
+   ],
+   "category": "hybrid",
+   "shortcut": true,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 5.8,
+    "moderate": 7.3,
+    "vigorous": 10.3
+   }
+  },
+  {
+   "id": "hiit",
+   "label": "HIIT",
+   "keywords": [
+    "hiit",
+    "tabata",
+    "เบิร์นพี"
+   ],
+   "category": "hybrid",
+   "shortcut": true,
+   "defaultMinutes": 25,
+   "mets": {
+    "light": 5,
+    "moderate": 7,
+    "vigorous": 11
+   }
+  },
+  {
+   "id": "tennis",
+   "label": "เทนนิส",
+   "keywords": [
+    "tennis",
+    "เทนนิส"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 60,
+   "mets": {
+    "light": 5,
+    "moderate": 6.8,
+    "vigorous": 8
+   }
+  },
+  {
+   "id": "table_tennis",
+   "label": "ปิงปอง",
+   "keywords": [
+    "ปิงปอง",
+    "เทเบิลเทนนิส",
+    "table tennis",
+    "ping pong"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 4,
+    "moderate": 4,
+    "vigorous": 4
+   }
+  },
+  {
+   "id": "jump_rope",
+   "label": "กระโดดเชือก",
+   "keywords": [
+    "กระโดดเชือก",
+    "jump rope",
+    "skipping"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 15,
+   "mets": {
+    "light": 8.3,
+    "moderate": 11.8,
+    "vigorous": 12.3
+   }
+  },
+  {
+   "id": "volleyball",
+   "label": "วอลเลย์บอล",
+   "keywords": [
+    "วอลเลย์",
+    "volleyball"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 3,
+    "moderate": 4,
+    "vigorous": 6
+   }
+  },
+  {
+   "id": "beach_volleyball",
+   "label": "วอลเลย์บอลชายหาด",
+   "keywords": [
+    "วอลเลย์ชายหาด",
+    "beach volleyball"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 8,
+    "moderate": 8,
+    "vigorous": 8
+   }
+  },
+  {
+   "id": "sepak_takraw",
+   "label": "ตะกร้อ",
+   "keywords": [
+    "ตะกร้อ",
+    "takraw"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 3,
+    "moderate": 4,
+    "vigorous": 6
+   }
+  },
+  {
+   "id": "futsal",
+   "label": "ฟุตซอล",
+   "keywords": [
+    "ฟุตซอล",
+    "futsal"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 7,
+    "moderate": 7.8,
+    "vigorous": 9.5
+   }
+  },
+  {
+   "id": "golf",
+   "label": "กอล์ฟ (เดิน)",
+   "keywords": [
+    "กอล์ฟ",
+    "golf"
+   ],
+   "category": "other",
+   "shortcut": false,
+   "defaultMinutes": 90,
+   "mets": {
+    "light": 3.5,
+    "moderate": 4.3,
+    "vigorous": 4.5
+   }
+  },
+  {
+   "id": "hiking",
+   "label": "เดินป่า / เดินขึ้นเขา",
+   "keywords": [
+    "เดินป่า",
+    "เดินขึ้นเขา",
+    "hiking",
+    "trekking"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 90,
+   "mets": {
+    "light": 3.8,
+    "moderate": 5.3,
+    "vigorous": 7.8
+   }
+  },
+  {
+   "id": "stairs",
+   "label": "เดินขึ้นบันได",
+   "keywords": [
+    "บันได",
+    "stairs"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 15,
+   "mets": {
+    "light": 4.5,
+    "moderate": 6.8,
+    "vigorous": 9.3
+   }
+  },
+  {
+   "id": "rowing_machine",
+   "label": "เครื่องกรรเชียงบก",
+   "keywords": [
+    "กรรเชียง",
+    "rowing",
+    "โรวิ่ง"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 20,
+   "mets": {
+    "light": 7.5,
+    "moderate": 11,
+    "vigorous": 14
+   }
+  },
+  {
+   "id": "elliptical",
+   "label": "เครื่องเดินวงรี (Elliptical)",
+   "keywords": [
+    "elliptical",
+    "อีลิปติคอล",
+    "วงรี"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 5,
+    "moderate": 5,
+    "vigorous": 9
+   }
+  },
+  {
+   "id": "stationary_bike",
+   "label": "จักรยานอยู่กับที่ / Spinning",
+   "keywords": [
+    "spinning",
+    "สปินนิ่ง",
+    "จักรยานอยู่กับที่"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 4,
+    "moderate": 6.8,
+    "vigorous": 9
+   }
+  },
+  {
+   "id": "dance",
+   "label": "เต้น (ทั่วไป)",
+   "keywords": [
+    "เต้น",
+    "dance",
+    "แดนซ์",
+    "cover"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 3.8,
+    "moderate": 5,
+    "vigorous": 9.8
+   }
+  },
+  {
+   "id": "boxing_bag",
+   "label": "ชกกระสอบทราย",
+   "keywords": [
+    "กระสอบ",
+    "boxing bag"
+   ],
+   "category": "hybrid",
+   "shortcut": false,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 5.8,
+    "moderate": 7,
+    "vigorous": 8.5
+   }
+  },
+  {
+   "id": "martial_arts",
+   "label": "ศิลปะป้องกันตัว (เทควันโด / คาราเต้ / ยูโด)",
+   "keywords": [
+    "เทควันโด",
+    "คาราเต้",
+    "ยูโด",
+    "จูจิตสู",
+    "taekwondo",
+    "karate",
+    "judo"
+   ],
+   "category": "hybrid",
+   "shortcut": false,
+   "defaultMinutes": 60,
+   "mets": {
+    "light": 5.3,
+    "moderate": 10.3,
+    "vigorous": 10.3
+   }
+  },
+  {
+   "id": "rock_climbing",
+   "label": "ปีนผา / บอลเดอริ่ง",
+   "keywords": [
+    "ปีนผา",
+    "บอลเดอ",
+    "climbing",
+    "bouldering"
+   ],
+   "category": "hybrid",
+   "shortcut": false,
+   "defaultMinutes": 60,
+   "mets": {
+    "light": 5.8,
+    "moderate": 8,
+    "vigorous": 8.8
+   }
+  },
+  {
+   "id": "skateboard",
+   "label": "สเก็ตบอร์ด / เซิร์ฟสเก็ต",
+   "keywords": [
+    "สเก็ต",
+    "skate"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 5,
+    "moderate": 6,
+    "vigorous": 8.3
+   }
+  },
+  {
+   "id": "inline_skate",
+   "label": "โรลเลอร์เบลด",
+   "keywords": [
+    "โรลเลอร์",
+    "rollerblade",
+    "inline"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 40,
+   "mets": {
+    "light": 7.5,
+    "moderate": 9.8,
+    "vigorous": 12.3
+   }
+  },
+  {
+   "id": "kayak",
+   "label": "พายเรือคายัค / SUP",
+   "keywords": [
+    "คายัค",
+    "พายเรือ",
+    "kayak",
+    "sup",
+    "paddle"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 60,
+   "mets": {
+    "light": 3.8,
+    "moderate": 5,
+    "vigorous": 6.5
+   }
+  },
+  {
+   "id": "surfing",
+   "label": "เซิร์ฟ",
+   "keywords": [
+    "เซิร์ฟ",
+    "surf"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 60,
+   "mets": {
+    "light": 3,
+    "moderate": 5,
+    "vigorous": 6.8
+   }
+  },
+  {
+   "id": "tai_chi",
+   "label": "ไทเก๊ก / ชี่กง",
+   "keywords": [
+    "ไทเก๊ก",
+    "ชี่กง",
+    "tai chi",
+    "qigong"
+   ],
+   "category": "other",
+   "shortcut": false,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 3.3,
+    "moderate": 3.3,
+    "vigorous": 6
+   }
+  },
+  {
+   "id": "stretching",
+   "label": "ยืดเหยียด",
+   "keywords": [
+    "ยืด",
+    "stretch"
+   ],
+   "category": "other",
+   "shortcut": false,
+   "defaultMinutes": 15,
+   "mets": {
+    "light": 2.3,
+    "moderate": 2.3,
+    "vigorous": 2.3
+   }
+  },
+  {
+   "id": "circuit",
+   "label": "เซอร์กิตเทรนนิ่ง",
+   "keywords": [
+    "เซอร์กิต",
+    "circuit",
+    "crossfit",
+    "ครอสฟิต"
+   ],
+   "category": "hybrid",
+   "shortcut": false,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 3.5,
+    "moderate": 5,
+    "vigorous": 7.5
+   }
+  },
+  {
+   "id": "calisthenics",
+   "label": "คาลิสเธนิกส์ (วิดพื้น / ซิทอัพ)",
+   "keywords": [
+    "วิดพื้น",
+    "ซิทอัพ",
+    "คาลิส",
+    "push up",
+    "sit up",
+    "plank"
+   ],
+   "category": "strength",
+   "shortcut": false,
+   "defaultMinutes": 20,
+   "mets": {
+    "light": 2.8,
+    "moderate": 3.8,
+    "vigorous": 7.5
+   }
+  },
+  {
+   "id": "trampoline",
+   "label": "แทรมโพลีน",
+   "keywords": [
+    "แทรมโพลีน",
+    "trampoline"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 6.3,
+    "moderate": 6.3,
+    "vigorous": 10.3
+   }
+  },
+  {
+   "id": "gardening",
+   "label": "ทำสวน / ขุดดิน",
+   "keywords": [
+    "ทำสวน",
+    "ขุดดิน",
+    "gardening"
+   ],
+   "category": "other",
+   "shortcut": false,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 2,
+    "moderate": 3.8,
+    "vigorous": 5
+   }
+  },
+  {
+   "id": "housework",
+   "label": "ทำความสะอาดบ้าน / ถูพื้น",
+   "keywords": [
+    "ทำความสะอาด",
+    "ถูพื้น",
+    "กวาดบ้าน",
+    "งานบ้าน",
+    "cleaning"
+   ],
+   "category": "other",
+   "shortcut": false,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 2.5,
+    "moderate": 3.3,
+    "vigorous": 3.5
+   }
+  },
+  {
+   "id": "walk_dog",
+   "label": "พาสุนัขเดินเล่น",
+   "keywords": [
+    "หมา",
+    "สุนัข",
+    "dog"
+   ],
+   "category": "other",
+   "shortcut": false,
+   "defaultMinutes": 30,
+   "mets": {
+    "light": 3,
+    "moderate": 3,
+    "vigorous": 3.8
+   }
+  },
+  {
+   "id": "frisbee",
+   "label": "อัลติเมทฟริสบี้",
+   "keywords": [
+    "ฟริสบี้",
+    "frisbee"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 3,
+    "moderate": 8,
+    "vigorous": 8
+   }
+  },
+  {
+   "id": "squash",
+   "label": "สควอช",
+   "keywords": [
+    "สควอช",
+    "squash"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 7.3,
+    "moderate": 7.3,
+    "vigorous": 12
+   }
+  },
+  {
+   "id": "pickleball",
+   "label": "พิกเคิลบอล",
+   "keywords": [
+    "พิกเคิล",
+    "pickleball"
+   ],
+   "category": "cardio",
+   "shortcut": false,
+   "defaultMinutes": 45,
+   "mets": {
+    "light": 6,
+    "moderate": 6,
+    "vigorous": 10
+   }
+  }
+ ]
+}

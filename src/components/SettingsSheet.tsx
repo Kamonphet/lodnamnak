@@ -310,7 +310,11 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
               <span className="text-sm font-semibold text-ink-700 tabular-data">{version}</span>
             </Row>
             <div className="py-2.5 space-y-1 text-xs text-ink-700 leading-relaxed">
-              <p>ค่าการเผาผลาญ: Compendium of Physical Activities</p>
+              <p>
+                ข้อมูลโภชนาการอาหาร: Thai Food Composition Database (Thai FCD), สถาบันโภชนาการ
+                มหาวิทยาลัยมหิดล (INMU) · inmu.mahidol.ac.th/thaifcd
+              </p>
+              <p>ค่าการเผาผลาญ: 2024 Adult Compendium of Physical Activities · pacompendium.com</p>
               <p>สินค้าบรรจุภัณฑ์: Open Food Facts</p>
               <p>ข้อมูลในแอปเป็นค่าประมาณเพื่อดูแลสุขภาพทั่วไป ไม่ใช่คำแนะนำทางการแพทย์</p>
             </div>

@@ -162,14 +162,10 @@ describe('Health Calculator & Multi-User Diversity', () => {
 });
 
 describe('Compositional Food Engine, Custom Nutrition & Dietary Restrictions', () => {
-  it('estimates both database dishes and unseen compositional dishes dynamically', () => {
+  it('logs known dishes from the Thai FCD database', () => {
     const kaprao = parseThaiFoodInput('กะเพราหมูสับไข่ดาว');
-    expect(kaprao[0].calories).toBe(695);
-
-    const unseenLeanDish = parseThaiFoodInput('ข้าวกล้องต้มจืดเต้าหู้อกไก่');
-    const unseenFriedDish = parseThaiFoodInput('ข้าวผัดหมูกรอบชุบแป้งทอด');
-    expect(unseenFriedDish[0].calories).toBeGreaterThan(unseenLeanDish[0].calories);
-    expect(unseenLeanDish[0].proteinGrams).toBeGreaterThan(25);
+    expect(kaprao[0].normalizedName).toBe('ข้าวกะเพราหมูสับไข่ดาว');
+    expect(kaprao[0].isEstimated).toBe(false);
   });
 
   it('supports exact manual nutrition label entries and filters meal suggestions by dietary restrictions', () => {
