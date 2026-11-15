@@ -620,3 +620,36 @@
     animation: none !important;
   }
 }
+
+/* ค่าการแสดงผลจากหน้าตั้งค่า */
+html.large-text {
+  font-size: 112.5%;
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* พื้นหลังทึบของหน้าต่างเต็มจอ (ตั้งค่า / ถ่ายฉลาก) */
+.app-sheet {
+  background: linear-gradient(150deg, #e8fcf3 0%, #fafdfb 46%, #fff2eb 100%);
+}
+
+/* ตัวอักษรใหญ่: ซ่อนข้อความรองบนแถบหัวให้พอดีจอแคบ */
+@media (max-width: 479px) {
+  html.large-text .app-brand-text,
+  html.large-text .app-header-name {
+    display: none;
+  }
+}
+@media (max-width: 379px) {
+  html.large-text .app-header-level {
+    display: none;
+  }
+}

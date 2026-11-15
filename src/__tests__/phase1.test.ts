@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_APP_SETTINGS,
   daysSinceLastWeighIn,
+  getDueNudges,
   sanitizeAppSettings,
   shouldShowWeighInReminder,
 } from '../domain/appSettings';
@@ -57,5 +58,40 @@ describe('custom exercise kcal', () => {
     // 7.3 MET × 3.5 × 70 / 200 × 60 นาที ≈ 537 → ปัดเป็น 535
     expect(calculateBurnFromMet(70, tennis!.mets.moderate, 60)).toBe(535);
     expect(searchMetActivities('กระโดด')[0]?.id).toBe('jump_rope');
+  });
+});
+
+describe('settings: weekday weigh-in and daily nudges', () => {
+  it('reminds on the chosen weekday when not weighed today', () => {
+    // 2026-11-16 เป็นวันจันทร์ (1)
+    const settings = { ...DEFAULT_APP_SETTINGS, weighInWeekday: 1 };
+    expect(shouldShowWeighInReminder([checkIn('2026-11-13')], settings, '2026-11-16')).toBe(true);
+    expect(shouldShowWeighInReminder([checkIn('2026-11-16')], settings, '2026-11-16')).toBe(false);
+    expect(shouldShowWeighInReminder([checkIn('2026-11-13')], settings, '2026-11-15')).toBe(false);
+  });
+
+  it('nudges water after 15:00 and meals after 13:00, once per day', () => {
+    const base = {
+      settings: DEFAULT_APP_SETTINGS,
+      waterGlassesToday: 2,
+      targetWaterGlasses: 8,
+      foodsLoggedToday: 0,
+    };
+    expect(getDueNudges({ ...base, now: new Date('2026-11-15T12:00:00') })).toEqual([]);
+    expect(getDueNudges({ ...base, now: new Date('2026-11-15T16:00:00') })).toEqual(['water', 'meal']);
+    expect(
+      getDueNudges({
+        ...base,
+        settings: { ...DEFAULT_APP_SETTINGS, nudgedOn: { water: '2026-11-15', meal: '2026-11-15' } },
+        now: new Date('2026-11-15T16:00:00'),
+      })
+    ).toEqual([]);
+    expect(
+      getDueNudges({
+        ...base,
+        settings: { ...DEFAULT_APP_SETTINGS, waterReminder: false, mealReminder: false },
+        now: new Date('2026-11-15T16:00:00'),
+      })
+    ).toEqual([]);
   });
 });

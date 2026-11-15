@@ -6,6 +6,7 @@ import {
   Flame,
   HeartPulse,
   MessageCircleHeart,
+  Settings,
   Trash2,
   Upload,
   UserPlus,
@@ -19,9 +20,14 @@ import { DashboardTab } from './components/DashboardTab';
 import { FoodTrackerTab } from './components/FoodTrackerTab';
 import { LiquidToastViewport, ToastMessage } from './components/LiquidToast';
 import { OnboardingWizard } from './components/OnboardingWizard';
+import { SettingsSheet } from './components/SettingsSheet';
 import { WeighInReminderModal } from './components/WeighInReminderModal';
 import { WorkoutPlanTab } from './components/WorkoutPlanTab';
-import { daysSinceLastWeighIn, shouldShowWeighInReminder } from './domain/appSettings';
+import {
+  daysSinceLastWeighIn,
+  getDueNudges,
+  shouldShowWeighInReminder,
+} from './domain/appSettings';
 import { useHealthStore } from './state/useHealthStore';
 
 type ActiveTab = 'dashboard' | 'food' | 'workout' | 'coach';
@@ -45,6 +51,7 @@ export const App: React.FC = () => {
   const [showAccountsPanel, setShowAccountsPanel] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const gamificationProgressRef = useRef<{
     accountId: string;
@@ -95,7 +102,9 @@ export const App: React.FC = () => {
       return;
     }
 
-    if (g.level > prev.level) {
+    if (!store.appSettings.celebrationToasts) {
+      // ปิดข้อความฉลองไว้ในตั้งค่า
+    } else if (g.level > prev.level) {
       pushToast({
         title: `เลเวลอัปเป็น Lv.${g.level}!`,
         detail: g.rankTitle,
@@ -124,7 +133,62 @@ export const App: React.FC = () => {
       level: g.level,
       completedQuestIds,
     };
-  }, [store.activeAccountId, store.gamification, pushToast]);
+  }, [store.activeAccountId, store.gamification, store.appSettings.celebrationToasts, pushToast]);
+
+  // ค่าการแสดงผลจากหน้าตั้งค่า
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('reduce-motion', store.appSettings.reduceMotion);
+    root.classList.toggle('large-text', store.appSettings.largeText);
+  }, [store.appSettings.reduceMotion, store.appSettings.largeText]);
+
+  // เตือนในแอปวันละครั้ง (ดื่มน้ำ / บันทึกอาหาร) ตอนเปิดหรือกลับมาที่แอป
+  const { markNudged } = store;
+  const nudgeInputsRef = useRef({
+    settings: store.appSettings,
+    water: store.gamification?.todayWaterGlasses ?? 0,
+    target: store.gamification?.targetWaterGlasses ?? 8,
+    foods: store.todayFoods.length,
+    ready: false,
+  });
+  nudgeInputsRef.current = {
+    settings: store.appSettings,
+    water: store.gamification?.todayWaterGlasses ?? 0,
+    target: store.gamification?.targetWaterGlasses ?? 8,
+    foods: store.todayFoods.length,
+    ready: Boolean(store.profile && store.metrics && wizardMode === 'none'),
+  };
+  useEffect(() => {
+    const check = () => {
+      const cur = nudgeInputsRef.current;
+      if (!cur.ready || document.hidden) return;
+      const due = getDueNudges({
+        settings: cur.settings,
+        now: new Date(),
+        waterGlassesToday: cur.water,
+        targetWaterGlasses: cur.target,
+        foodsLoggedToday: cur.foods,
+      });
+      if (due.length === 0) return;
+      if (due.includes('water')) {
+        pushToast({
+          title: 'ดื่มน้ำเพิ่มอีกหน่อย',
+          detail: `วันนี้ ${(cur.water * cur.settings.waterGlassMl).toLocaleString()} / ${(cur.target * cur.settings.waterGlassMl).toLocaleString()} มล.`,
+          tone: 'energy',
+        });
+      }
+      if (due.includes('meal')) {
+        pushToast({ title: 'วันนี้ยังไม่ได้บันทึกอาหาร', tone: 'warning' });
+      }
+      markNudged(due);
+    };
+    const timer = window.setTimeout(check, 1500);
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [store.activeAccountId, markNudged, pushToast]);
 
   const handleSelectTab = (nextTab: ActiveTab) => {
     if (nextTab === activeTab) return;
@@ -200,6 +264,50 @@ export const App: React.FC = () => {
       <LiquidToastViewport toasts={toasts} onDismiss={dismissToast} />
       <ConfirmDialog dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />
       {store.profile && (
+        <SettingsSheet
+          open={showSettings}
+          onClose={() => setShowSettings(false)}
+          profile={store.profile}
+          settings={store.appSettings}
+          accountsCount={store.accounts.length}
+          onUpdateSettings={store.updateAppSettings}
+          onUpdateAvatar={store.updateAvatarStyle}
+          onEditProfile={() => {
+            setShowSettings(false);
+            setWizardMode('edit');
+          }}
+          onManageAccounts={() => {
+            setShowSettings(false);
+            setShowAccountsPanel(true);
+          }}
+          onExport={handleExportCurrentProfile}
+          onImport={() => importInputRef.current?.click()}
+          onDeleteProfile={() => {
+            const target = store.profile;
+            const id = store.activeAccountId;
+            if (!target || !id) return;
+            setConfirmDialog({
+              title: 'ลบโปรไฟล์?',
+              detail: `${target.name || 'ผู้ใช้งาน'} และประวัติทั้งหมดจะถูกลบออกจากเครื่องนี้`,
+              confirmLabel: 'ลบโปรไฟล์',
+              tone: 'danger',
+              onConfirm: () => {
+                store.deleteAccount(id);
+                setShowSettings(false);
+                pushToast({ title: 'ลบโปรไฟล์แล้ว', detail: target.name || 'ผู้ใช้งาน', tone: 'warning' });
+              },
+            });
+          }}
+        />
+      )}
+      <input
+        ref={importInputRef}
+        type="file"
+        accept="application/json"
+        onChange={handleImportProfileFile}
+        className="hidden"
+      />
+      {store.profile && (
         <WeighInReminderModal
           open={showWeighInReminder}
           lastWeightKg={store.profile.currentWeightKg}
@@ -226,7 +334,7 @@ export const App: React.FC = () => {
               height={32}
               className="w-8 h-8 rounded-xl shrink-0"
             />
-            <span className="font-bold text-base text-ink-900 tracking-tight">
+            <span className="app-brand-text hidden min-[390px]:inline font-bold text-base text-ink-900 tracking-tight">
               Lodnamnak
             </span>
           </div>
@@ -245,7 +353,7 @@ export const App: React.FC = () => {
               >
                 <Flame className="w-3.5 h-3.5" />
                 <span>{store.gamification.currentStreakDays} วัน</span>
-                <span className="opacity-80">· Lv.{store.gamification.level}</span>
+                <span className="app-header-level opacity-80">· Lv.{store.gamification.level}</span>
               </button>
             )}
 
@@ -253,15 +361,27 @@ export const App: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowAccountsPanel((prev) => !prev)}
-                className="tactile-btn inline-flex items-center gap-1.5 rounded-full glass-pill px-2.5 py-1.5 text-xs font-semibold text-ink-900 min-w-0"
+                aria-label="ผู้ใช้ในเครื่องนี้"
+                className="tactile-btn inline-flex items-center gap-1.5 rounded-full glass-pill px-2.5 py-1.5 text-xs font-semibold text-ink-900 shrink-0"
               >
                 <Users className="w-3.5 h-3.5 text-sage-600 shrink-0" />
-                <span className="max-w-[88px] truncate">
+                <span className="app-header-name hidden min-[400px]:inline max-w-[72px] truncate">
                   {store.profile?.name || 'สลับผู้ใช้'}
                 </span>
                 <span className="rounded-full bg-sage-600/15 text-sage-700 px-1.5 py-0.2 text-[10px] font-bold tabular-data shrink-0">
                   {store.accounts.length}
                 </span>
+              </button>
+            )}
+
+            {!showOnboarding && (
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                aria-label="ตั้งค่า"
+                className="tactile-btn w-8 h-8 rounded-full glass-pill inline-flex items-center justify-center text-ink-700 shrink-0"
+              >
+                <Settings className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -379,13 +499,6 @@ export const App: React.FC = () => {
                 <span>ส่งออก JSON</span>
               </button>
 
-              <input
-                ref={importInputRef}
-                type="file"
-                accept="application/json"
-                onChange={handleImportProfileFile}
-                className="hidden"
-              />
               <button
                 type="button"
                 onClick={() => importInputRef.current?.click()}
@@ -458,6 +571,8 @@ export const App: React.FC = () => {
                     onAdjustWater={store.adjustTodayWater}
                     onEquipAccessory={store.equipAvatarAccessory}
                     onEditProfile={() => setWizardMode('edit')}
+                    waterGlassMl={store.appSettings.waterGlassMl}
+                    lowPower3d={store.appSettings.lowPower3d}
                     onNotify={pushToast}
                   />
                 )}

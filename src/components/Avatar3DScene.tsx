@@ -28,6 +28,8 @@ interface Avatar3DSceneProps {
   avatarStyle?: AvatarCustomization;
   equippedAccessory?: AvatarAccessoryId;
   defaultPose?: AvatarPose;
+  /** โหมดประหยัดแบต: เรนเดอร์ ~20fps ความละเอียด 1x และไม่หมุนเอง */
+  lowPower?: boolean;
 }
 
 const GENDER_LABEL: Record<Gender, string> = {
@@ -107,11 +109,17 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
   avatarStyle,
   equippedAccessory = 'none',
   defaultPose = 'idle',
+  lowPower = false,
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [pose, setPose] = useState<AvatarPose>(defaultPose);
   const [goalPreviewMix, setGoalPreviewMix] = useState<number>(0);
-  const [autoSpin, setAutoSpin] = useState<boolean>(true);
+  const [autoSpin, setAutoSpin] = useState<boolean>(!lowPower);
+  const lowPowerRef = useRef(lowPower);
+  lowPowerRef.current = lowPower;
+  useEffect(() => {
+    if (lowPower) setAutoSpin(false);
+  }, [lowPower]);
 
   const poseButtons = useMemo(
     () => buildUserPoseButtons(regularExercises, customExercises),
@@ -222,7 +230,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
       powerPreference: 'high-performance',
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(lowPowerRef.current ? 1 : Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.replaceChildren(renderer.domElement);
 
@@ -703,8 +711,14 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     let elapsed = 0;
     const clock = new THREE.Clock();
 
+    let lastFrameAt = 0;
     const animate = () => {
       animId = requestAnimationFrame(animate);
+      // ไม่วาดตอนแอปถูกซ่อน และจำกัดเฟรมในโหมดประหยัดแบต
+      if (document.hidden) return;
+      const now = performance.now();
+      if (lowPowerRef.current && now - lastFrameAt < 50) return;
+      lastFrameAt = now;
       const dt = Math.min(0.05, clock.getDelta());
       elapsed += dt;
       const t = elapsed;

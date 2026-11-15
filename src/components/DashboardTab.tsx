@@ -52,6 +52,8 @@ interface DashboardTabProps {
   weightHistory: WeightCheckIn[];
   onSelectPace: (pace: PaceRateKgPerWeek) => void;
   onReportWeight: (weightKg: number) => { ok: boolean; error?: string };
+  waterGlassMl?: number;
+  lowPower3d?: boolean;
   onAdjustWater: (delta: number) => void;
   onEquipAccessory: (accessoryId: AvatarAccessoryId) => void;
   onEditProfile: () => void;
@@ -70,6 +72,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   onSelectPace,
   onReportWeight,
   onAdjustWater,
+  waterGlassMl,
+  lowPower3d,
   onEquipAccessory,
   onEditProfile,
   onNotify,
@@ -192,6 +196,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           customExercises={profile.customExercises}
           avatarStyle={profile.avatarStyle}
           equippedAccessory={activeAccessory}
+          lowPower={lowPower3d}
         />
       </div>
 
@@ -354,6 +359,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             currentGlasses={gamification.todayWaterGlasses}
             targetGlasses={gamification.targetWaterGlasses}
             onAdjustWater={handleWaterDelta}
+            mlPerGlass={waterGlassMl}
           />
 
           {/* เส้นทางน้ำหนัก & บันทึกน้ำหนักวันนี้ */}
@@ -419,7 +425,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       )}
 
       {sectionTab === 'progress' && (
-        <ProgressHistoryPanel progress={progress} />
+        <ProgressHistoryPanel progress={progress} mlPerGlass={waterGlassMl} />
       )}
 
       {sectionTab === 'quests' && (
@@ -427,6 +433,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           summary={gamification}
           equippedAccessory={activeAccessory}
           onAdjustWater={handleWaterDelta}
+          mlPerGlass={waterGlassMl}
           onEquipAccessory={(accessoryId) => {
             const targetMeta = gamification.accessories.find(
               (a) => a.id === accessoryId

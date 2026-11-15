@@ -40,6 +40,7 @@ import {
 } from '../domain/gamification';
 import { calculateProgressSummary } from '../domain/progressHistory';
 import {
+  DailyNudge,
   DEFAULT_APP_SETTINGS,
   getTomorrowKey,
   sanitizeAppSettings,
@@ -70,6 +71,7 @@ import {
   WeeklyActivityLevel,
   WeightCheckIn,
   AppSettings,
+  AvatarCustomization,
 } from '../domain/types';
 
 const MULTI_STORAGE_KEY = 'lodnamnak_accounts_v2';
@@ -1197,6 +1199,38 @@ export function useHealthStore() {
     }));
   }, [updateActiveAccount]);
 
+  const markNudged = useCallback(
+    (types: DailyNudge[]) => {
+      if (types.length === 0) return;
+      const today = todayKey();
+      updateActiveAccount((acc) => {
+        const base = acc.appSettings ?? DEFAULT_APP_SETTINGS;
+        const nudgedOn = { ...(base.nudgedOn ?? {}) };
+        for (const t of types) nudgedOn[t] = today;
+        return { ...acc, appSettings: { ...base, nudgedOn } };
+      });
+    },
+    [updateActiveAccount]
+  );
+
+  const updateAvatarStyle = useCallback(
+    (patch: Partial<AvatarCustomization>) => {
+      updateActiveAccount((acc) => ({
+        ...acc,
+        profile: {
+          ...acc.profile,
+          avatarStyle: {
+            shirtColor: acc.profile.avatarStyle?.shirtColor ?? '#2e8b67',
+            skinTone: acc.profile.avatarStyle?.skinTone ?? '#ffdfc8',
+            ...acc.profile.avatarStyle,
+            ...patch,
+          },
+        },
+      }));
+    },
+    [updateActiveAccount]
+  );
+
   const removeExerciseLog = useCallback(
     (id: string) => {
       updateActiveAccount((acc) => ({
@@ -1378,5 +1412,7 @@ export function useHealthStore() {
     appSettings: activeAccount?.appSettings ?? DEFAULT_APP_SETTINGS,
     updateAppSettings,
     snoozeWeighInReminder,
+    markNudged,
+    updateAvatarStyle,
   };
 }

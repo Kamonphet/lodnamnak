@@ -1,17 +1,19 @@
 import React, { useId } from 'react';
 import { Check, Minus, Plus } from 'lucide-react';
-import { formatWaterMl, ML_PER_GLASS } from '../domain/gamification';
+import { ML_PER_GLASS } from '../domain/gamification';
 
 interface WaterGlassTrackerProps {
   currentGlasses: number;
   targetGlasses: number;
   onAdjustWater: (delta: number) => void;
+  mlPerGlass?: number;
 }
 
 export const WaterGlassTracker: React.FC<WaterGlassTrackerProps> = ({
   currentGlasses,
   targetGlasses,
   onAdjustWater,
+  mlPerGlass = ML_PER_GLASS,
 }) => {
   const clipId = useId().replace(/:/g, '');
   const fillRatio = Math.max(
@@ -181,7 +183,7 @@ export const WaterGlassTracker: React.FC<WaterGlassTrackerProps> = ({
           <span className="block text-xs font-bold text-ink-900">น้ำดื่มวันนี้</span>
           <div className="flex items-baseline gap-1.5 tabular-data flex-wrap">
             <span className="text-sm font-bold text-sky-600">
-              {(currentGlasses * ML_PER_GLASS).toLocaleString()}/{formatWaterMl(targetGlasses)}
+              {(currentGlasses * mlPerGlass).toLocaleString()}/{(targetGlasses * mlPerGlass).toLocaleString()} มล.
             </span>
             <span className="text-[11px] font-semibold text-ink-500">
               {currentGlasses}/{targetGlasses} แก้ว
@@ -226,7 +228,7 @@ export const WaterGlassTracker: React.FC<WaterGlassTrackerProps> = ({
           type="button"
           disabled={currentGlasses <= 0}
           onClick={() => onAdjustWater(-1)}
-          aria-label={`ลดน้ำดื่ม ${ML_PER_GLASS} มล.`}
+          aria-label={`ลดน้ำดื่ม ${mlPerGlass} มล.`}
           className="tactile-btn w-8 h-8 rounded-2xl glass-pill disabled:opacity-40 inline-flex items-center justify-center text-ink-900"
         >
           <Minus className="w-3.5 h-3.5" />
@@ -237,7 +239,7 @@ export const WaterGlassTracker: React.FC<WaterGlassTrackerProps> = ({
           className="tactile-btn min-h-[36px] rounded-2xl glass-btn-primary px-3 text-xs font-bold inline-flex items-center gap-1"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>{ML_PER_GLASS} มล.</span>
+          <span>{mlPerGlass} มล.</span>
         </button>
       </div>
     </div>

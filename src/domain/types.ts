@@ -428,8 +428,20 @@ export interface AppSettings {
   /** เตือนชั่งน้ำหนักเมื่อไม่ได้ชั่งครบตามจำนวนวัน */
   weighInReminder: boolean;
   weighInIntervalDays: number;
+  /** วันที่อยากชั่งประจำ (0 = อาทิตย์ … 6 = เสาร์, -1 = ไม่ระบุ) */
+  weighInWeekday: number;
   /** ไม่เตือนจนถึงวันนี้ (YYYY-MM-DD) */
   weighInSnoozedUntil?: string;
+  waterReminder: boolean;
+  mealReminder: boolean;
+  celebrationToasts: boolean;
+  /** ขนาดแก้วน้ำ (มล.) */
+  waterGlassMl: number;
+  reduceMotion: boolean;
+  largeText: boolean;
+  lowPower3d: boolean;
+  /** วันที่เตือนในแอปไปแล้ว (กันเตือนซ้ำในวันเดียวกัน) */
+  nudgedOn?: { water?: string; meal?: string };
 }
 
 /**

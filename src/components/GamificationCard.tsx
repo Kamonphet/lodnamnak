@@ -31,6 +31,7 @@ interface GamificationCardProps {
   equippedAccessory?: AvatarAccessoryId;
   onAdjustWater: (delta: number) => void;
   onEquipAccessory: (accessoryId: AvatarAccessoryId) => void;
+  mlPerGlass?: number;
 }
 
 const DIFFICULTY_META: Record<
@@ -169,6 +170,7 @@ export const GamificationCard: React.FC<GamificationCardProps> = ({
   summary,
   equippedAccessory = 'none',
   onAdjustWater,
+  mlPerGlass,
   onEquipAccessory,
 }) => {
   const [subView, setSubView] = useState<'quests' | 'rewards'>('quests');
@@ -307,6 +309,7 @@ export const GamificationCard: React.FC<GamificationCardProps> = ({
             currentGlasses={summary.todayWaterGlasses}
             targetGlasses={summary.targetWaterGlasses}
             onAdjustWater={onAdjustWater}
+            mlPerGlass={mlPerGlass}
           />
 
           {/* ภารกิจรายวัน */}

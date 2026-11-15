@@ -14,10 +14,12 @@ import { ProgressSummary, WeightChartPoint } from '../domain/types';
 
 interface ProgressHistoryPanelProps {
   progress: ProgressSummary;
+  mlPerGlass?: number;
 }
 
 export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
   progress,
+  mlPerGlass = ML_PER_GLASS,
 }) => {
   const [activePointIndex, setActivePointIndex] = useState<number | null>(
     progress.chartPoints.length > 0 ? progress.chartPoints.length - 1 : null
@@ -293,7 +295,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
                     <div className="rounded-xl bg-white/70 p-1.5">
                       <span className="block text-[10px] text-ink-700">น้ำดื่ม</span>
                       <span className="block font-bold text-xs text-sky-600">
-                        {(item.waterGlasses * ML_PER_GLASS).toLocaleString()}
+                        {(item.waterGlasses * mlPerGlass).toLocaleString()}
                       </span>
                       <span className="block text-[9px] text-ink-700">มล.</span>
                     </div>
