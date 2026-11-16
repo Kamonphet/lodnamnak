@@ -57,6 +57,63 @@ function sanitizeNumber(val: string): number {
   return Number.isFinite(num) && num >= 0 ? num : 0;
 }
 
+// OCR often drops or misplaces Thai marks (ทั้งหมด -> ทังหมด, น้ำตาล -> น้าตาล):
+// a keyword matches with any marks between its letters, and ำ also as า.
+const THAI_MARK = /[ัิ-ฺ็-๎]/g;
+const ANY_MARKS = '[\\u0E31\\u0E34-\\u0E3A\\u0E47-\\u0E4E]*';
+function th(word: string): string {
+  return [...word.replace(THAI_MARK, '')]
+    .map((c) => (c === 'ำ' || c === 'า' ? '[ำา]' : c) + ANY_MARKS)
+    .join('');
+}
+const NUM = '<?\\s*(\\d+(?:[.,]\\d+)?)';
+/** keyword, an optional colon, then the number */
+const thNum = (word: string, before = '') => new RegExp(`${before}${th(word)}\\s*[:\\s]*${NUM}`, 'i');
+
+const loose = (s: string) => s.replace(THAI_MARK, '').replace(/ำ/g, 'า').replace(/[\s:.*]/g, '').toLowerCase();
+
+function editDistance(a: string, b: string): number {
+  const A = [...a];
+  const B = [...b];
+  let prev = B.map((_, j) => j + 1);
+  prev.unshift(0);
+  for (let i = 1; i <= A.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= B.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (A[i - 1] === B[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[B.length];
+}
+
+/**
+ * Last resort for a misread letter ("โปรดีน 7 ก.", "น้ำตาผ 12 ก."): a line whose
+ * start is within ~1 letter in 5 of the keyword, and the first number after it.
+ */
+function fuzzyLineValue(lines: string[], keyword: string): [string, string] | null {
+  const k = [...loose(keyword)];
+  const maxDist = Math.max(1, Math.floor(k.length / 5));
+  for (const line of lines) {
+    const m = line.match(/^([^\d]*?)\s*<?\s*(\d+(?:[.,]\d+)?)/);
+    if (!m) continue;
+    const head = [...loose(m[1])];
+    for (let len = k.length - 1; len <= k.length + 1; len++) {
+      if (len > 0 && len <= head.length && editDistance(head.slice(0, len).join(''), k.join('')) <= maxDist) {
+        return [m[0], m[2]];
+      }
+    }
+  }
+  return null;
+}
+
+/** O read for zero next to a number or a unit ("O%", "1O ก.") */
+function fixZeros(text: string): string {
+  return text
+    .replace(/(?<=\d)[Oo](?=\d|\s*(?:%|ก\.|มก\.|g\b|mg\b))/g, '0')
+    .replace(/(?<![A-Za-z\d])[Oo](?=\s*(?:%|ก\.|มก\.|g\b|mg\b))/g, '0');
+}
+
 /**
  * สกัดสารก่อภูมิแพ้จากข้อความฉลาก/ส่วนประกอบ
  */
@@ -77,17 +134,18 @@ export function extractAllergensFromText(text: string): string[] {
  * สกัดข้อมูลโภชนาการจากข้อความ OCR บนฉลากอาหารไทยและสากล
  */
 export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
-  const text = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const text = fixZeros(rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n'));
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
 
   // 1. ดึงพลังงาน (Calories)
   let calories = 0;
   // รูปแบบไทย: "พลังงานทั้งหมด 140 กิโลแคลอรี", "พลังงาน 180 kcal", "140 kcal"
   const calMatch =
-    text.match(/พลังงานทั้งหมด\s*[:\s]*(\d+(?:[.,]\d+)?)\s*(?:กิโลแคลอรี|กิโลแคลอรี่|กิโลแคล|kcal|cal)?/i) ||
-    text.match(/พลังงาน\s*[:\s]*(\d+(?:[.,]\d+)?)\s*(?:กิโลแคลอรี|กิโลแคลอรี่|kcal|cal)?/i) ||
+    text.match(thNum('พลังงานทั้งหมด')) ||
+    text.match(thNum('พลังงาน')) ||
     text.match(/(?:calories|energy)\s*[:\s]*(\d+(?:[.,]\d+)?)\s*(?:kcal|cal)?/i) ||
-    text.match(/(\d{2,4})\s*(?:kcal|กิโลแคลอรี)/i);
+    text.match(/(\d{2,4})\s*(?:kcal|กิโลแคลอรี)/i) ||
+    fuzzyLineValue(lines, 'พลังงานทั้งหมด');
 
   if (calMatch) {
     calories = Math.round(sanitizeNumber(calMatch[1]));
@@ -96,8 +154,9 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
   // 2. ดึงโปรตีน (Protein)
   let proteinGrams = 0;
   const proteinMatch =
-    text.match(/โปรตีน\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:ก\.|กรัม|g)?/i) ||
-    text.match(/protein\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g|grams)?/i);
+    text.match(thNum('โปรตีน')) ||
+    text.match(/protein\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g|grams)?/i) ||
+    fuzzyLineValue(lines, 'โปรตีน');
   if (proteinMatch) {
     proteinGrams = Number(sanitizeNumber(proteinMatch[1]).toFixed(1));
   }
@@ -105,10 +164,13 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
   // 3. ดึงคาร์โบไฮเดรต (Carbohydrates)
   let carbsGrams = 0;
   const carbsMatch =
-    text.match(/คาร์โบไฮเดรตทั้งหมด\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:ก\.|กรัม|g)?/i) ||
-    text.match(/คาร์โบไฮเดรต\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:ก\.|กรัม|g)?/i) ||
+    text.match(thNum('คาร์โบไฮเดรตทั้งหมด')) ||
+    text.match(thNum('คาร์โบไฮเดรต')) ||
+    // "ทั้งหมด" misread ("หังหมด 19 ก.")
+    text.match(new RegExp(`${th('คาร์โบไฮเดรต')}[^\\d\\n]{0,10}?${NUM}`, 'i')) ||
     text.match(/total\s*carbohydrate[s]?\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
-    text.match(/carbs?\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i);
+    text.match(/carbs?\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
+    fuzzyLineValue(lines, 'คาร์โบไฮเดรตทั้งหมด');
   if (carbsMatch) {
     carbsGrams = Number(sanitizeNumber(carbsMatch[1]).toFixed(1));
   }
@@ -116,10 +178,12 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
   // 4. ดึงไขมันทั้งหมด (Fat)
   let fatGrams = 0;
   const fatMatch =
-    text.match(/ไขมันทั้งหมด\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:ก\.|กรัม|g)?/i) ||
-    text.match(/ไขมัน\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:ก\.|กรัม|g)?/i) ||
+    text.match(thNum('ไขมันทั้งหมด')) ||
+    // not "พลังงานจากไขมัน 60 กิโลแคลอรี"
+    text.match(thNum('ไขมัน', `(?<!${th('จาก')}\\s*)`)) ||
     text.match(/total\s*fat\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
-    text.match(/fat\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i);
+    text.match(/(?<!(?:saturated|trans|from)\s*)fat\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
+    fuzzyLineValue(lines, 'ไขมันทั้งหมด');
   if (fatMatch) {
     fatGrams = Number(sanitizeNumber(fatMatch[1]).toFixed(1));
   }
@@ -127,8 +191,9 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
   // 5. ดึงน้ำตาล (Sugar)
   let sugarGrams: number | undefined;
   const sugarMatch =
-    text.match(/น้ำตาล\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:ก\.|กรัม|g)?/i) ||
-    text.match(/sugars?\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i);
+    text.match(thNum('น้ำตาล')) ||
+    text.match(/sugars?\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
+    fuzzyLineValue(lines, 'น้ำตาล');
   if (sugarMatch) {
     sugarGrams = Number(sanitizeNumber(sugarMatch[1]).toFixed(1));
   }
@@ -136,8 +201,9 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
   // 6. ดึงโซเดียม (Sodium)
   let sodiumMg: number | undefined;
   const sodiumMatch =
-    text.match(/โซเดียม\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:มก\.|มิลลิกรัม|mg)?/i) ||
-    text.match(/sodium\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:mg)?/i);
+    text.match(thNum('โซเดียม')) ||
+    text.match(/sodium\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:mg)?/i) ||
+    fuzzyLineValue(lines, 'โซเดียม');
   if (sodiumMatch) {
     sodiumMg = Math.round(sanitizeNumber(sodiumMatch[1]));
   }
@@ -145,7 +211,7 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
   // 7. ดึงหน่วยบริโภค / จำนวนหน่วยบริโภค
   let servingLabel = '1 หน่วยบริโภค';
   const servingMatch =
-    text.match(/หนึ่งหน่วยบริโภค\s*[:\s]*([^\n]+)/i) ||
+    text.match(new RegExp(`${th('หนึ่งหน่วยบริโภค')}\\s*[:\\s]*([^\\n]+)`, 'i')) ||
     text.match(/serving\s*size\s*[:\s]*([^\n]+)/i);
   if (servingMatch) {
     servingLabel = servingMatch[1].trim().slice(0, 40);
@@ -153,7 +219,8 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
 
   let servingsPerContainer = 1;
   const containerMatch =
-    text.match(/จำนวนหน่วยบริโภคต่อภาชนะบรรจุ\s*[:\s]*(\d+(?:[.,]\d+)?)/i) ||
+    // "...ต่อภาชนะบรรจุ : 2", "...ต่อ ซอง : 1"
+    text.match(new RegExp(`${th('จำนวนหน่วยบริโภคต่อ')}[^\\d\\n]{0,30}?(\\d+(?:[.,]\\d+)?)`, 'i')) ||
     text.match(/servings\s*per\s*container\s*[:\s]*(\d+(?:[.,]\d+)?)/i);
   if (containerMatch) {
     servingsPerContainer = Math.max(1, Math.round(sanitizeNumber(containerMatch[1])));

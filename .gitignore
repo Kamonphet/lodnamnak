@@ -34,8 +34,6 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Generated OCR assets (scripts/copy-tesseract.mjs)
-public/tesseract/
 
 # Blender backup files
 *.blend1

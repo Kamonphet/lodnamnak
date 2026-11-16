@@ -18,5 +18,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["src/__tests__/character.test.ts"]
+  "exclude": ["src/__tests__/character.test.ts", "src/__tests__/openthaiOcr.test.ts"]
 }

@@ -394,6 +394,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
               </p>
               <p>ค่าการเผาผลาญ: 2024 Adult Compendium of Physical Activities · pacompendium.com</p>
               <p>สินค้าบรรจุภัณฑ์: Open Food Facts</p>
+              <p>อ่านฉลาก: OpenThai 2.0 OCR (iApp Technology, Apache-2.0)</p>
               <p>ข้อมูลในแอปเป็นค่าประมาณเพื่อดูแลสุขภาพทั่วไป ไม่ใช่คำแนะนำทางการแพทย์</p>
             </div>
           </Section>

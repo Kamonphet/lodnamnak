@@ -13,7 +13,6 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { createWorker } from 'tesseract.js';
 import {
   evaluateNutritionLabelDecision,
   parseNutritionFactsText,
@@ -36,8 +35,24 @@ interface NutritionLabelScannerModalProps {
 
 type ScanStep = 'camera' | 'ocr_processing' | 'ocr_failed' | 'review_decision';
 
-// OCR files are served from our own origin (see scripts/copy-tesseract.mjs)
-const TESSERACT_BASE = new URL('tesseract', document.baseURI).href.replace(/\/$/, '');
+// Data URL -> pixels via createImageBitmap (img.decode() can stall while the
+// page is not painting; fetch(data:) is blocked by the CSP connect-src).
+async function imageDataFromUrl(dataUrl: string): Promise<ImageData> {
+  const [head, body] = dataUrl.split(',', 2);
+  const mime = head.match(/^data:([^;]+)/)?.[1] ?? 'image/jpeg';
+  const bin = head.includes(';base64') ? atob(body) : decodeURIComponent(body);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const bitmap = await createImageBitmap(new Blob([bytes], { type: mime }), { imageOrientation: 'from-image' });
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('canvas 2d unavailable');
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
 
 export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProps> = ({
   isOpen,
@@ -109,32 +124,24 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
     };
   }, [isOpen]);
 
-  // ประมวลผลภาพผ่าน Tesseract OCR
+  // อ่านฉลากด้วย OpenThai OCR (รันในเครื่องผู้ใช้)
   const processImageWithOCR = async (imageSource: string) => {
     setStep('ocr_processing');
     setOcrProgress(5);
-    setOcrStatusText('กำลังเชื่อมต่อระบบอ่านตัวอักษร...');
+    setOcrStatusText('กำลังโหลดระบบอ่านฉลาก...');
 
     try {
-      const worker = await createWorker('tha+eng', 1, {
-        workerPath: `${TESSERACT_BASE}/worker.min.js`,
-        corePath: TESSERACT_BASE,
-        langPath: TESSERACT_BASE,
-        workerBlobURL: false,
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            setOcrProgress(Math.round(m.progress * 100));
-            setOcrStatusText(`กำลังสแกนตัวเลขและข้อความ (${Math.round(m.progress * 100)}%)...`);
-          } else {
-            setOcrStatusText('กำลังประมวลผลความคมชัดของภาพ...');
-          }
-        },
+      const [{ loadOpenThaiOcr }, image] = await Promise.all([
+        import('../domain/openthaiOcrRuntime'),
+        imageDataFromUrl(imageSource),
+      ]);
+      const ocr = await loadOpenThaiOcr();
+      setOcrStatusText('กำลังอ่านฉลาก...');
+      const ret = await ocr.read(image, {
+        onProgress: (f) => setOcrProgress(Math.round(10 + f * 90)),
       });
 
-      const ret = await worker.recognize(imageSource);
-      await worker.terminate();
-
-      const rawText = ret.data.text || '';
+      const rawText = ret.text || '';
       const parsed = parseNutritionFactsText(rawText);
 
       // อ่านตัวเลขโภชนาการไม่ได้เลย ให้ผู้ใช้ถ่ายใหม่หรือกรอกเอง
@@ -365,10 +372,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                   <Sparkles className="w-7 h-7 animate-pulse" />
                 </div>
               </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-ink-900">{ocrStatusText}</h3>
-                <p className="text-xs text-ink-500">ระบบกำลังสกัดค่าแคลอรี โปรตีน และส่วนผสมโดยอัตโนมัติ</p>
-              </div>
+              <h3 className="text-base font-bold text-ink-900">{ocrStatusText}</h3>
               <div className="w-48 h-2 bg-sand-100 rounded-full mx-auto overflow-hidden">
                 <div
                   className="h-full bg-sage-500 transition-all duration-300"
