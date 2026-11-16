@@ -39,6 +39,12 @@ import {
   VALID_AVATAR_ACCESSORIES,
 } from '../domain/gamification';
 import { calculateProgressSummary } from '../domain/progressHistory';
+import { BOTTOM_STYLES, HAIR_STYLES, TOP_STYLES } from '../domain/avatarOptions';
+
+/** รับเฉพาะค่าที่อยู่ในรายการตัวเลือก (กันข้อมูลแปลกปลอมจากไฟล์นำเข้า) */
+function pickOption<T extends string>(value: unknown, options: { id: T }[]): T | undefined {
+  return typeof value === 'string' && options.some((o) => o.id === value) ? (value as T) : undefined;
+}
 import { createFoodLogFromEntry, FoodEntry } from '../domain/foodDatabase';
 import {
   DailyNudge,
@@ -378,6 +384,14 @@ export function sanitizeAccountRecord(
         typeof rp.avatarStyle?.hairColor === 'string' &&
         HEX_COLOR_RE.test(rp.avatarStyle.hairColor)
           ? rp.avatarStyle.hairColor
+          : undefined,
+      hairStyle: pickOption(rp.avatarStyle?.hairStyle, HAIR_STYLES),
+      top: pickOption(rp.avatarStyle?.top, TOP_STYLES),
+      bottom: pickOption(rp.avatarStyle?.bottom, BOTTOM_STYLES),
+      bottomColor:
+        typeof rp.avatarStyle?.bottomColor === 'string' &&
+        HEX_COLOR_RE.test(rp.avatarStyle.bottomColor)
+          ? rp.avatarStyle.bottomColor
           : undefined,
     },
     equippedAccessory: VALID_AVATAR_ACCESSORIES.includes(

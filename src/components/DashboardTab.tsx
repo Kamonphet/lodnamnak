@@ -25,6 +25,19 @@ import {
   WeightCheckIn,
 } from '../domain/types';
 import { Avatar3DScene } from './Avatar3DScene';
+import { AvatarExpression } from '../domain/avatarOptions';
+
+/** สีหน้าตัวละครตามวันนี้: ภารกิจครบ = ขี้เล่น, กินเกินงบมาก = ตกใจ, ค่ำแล้วยังไม่บันทึกอาหาร = เศร้า */
+export function pickExpression(
+  allQuestsDone: boolean,
+  totals: { consumedCalories: number; targetCalories: number },
+  now: Date = new Date()
+): AvatarExpression {
+  if (allQuestsDone) return 'playful';
+  if (totals.consumedCalories > totals.targetCalories + 300) return 'shocked';
+  if (now.getHours() >= 20 && totals.consumedCalories === 0) return 'sad';
+  return 'happy';
+}
 import { GamificationCard } from './GamificationCard';
 import { ToastMessage } from './LiquidToast';
 import { CalorieRingGauge } from './NutritionVisuals';
@@ -197,6 +210,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           avatarStyle={profile.avatarStyle}
           equippedAccessory={activeAccessory}
           lowPower={lowPower3d}
+          expression={pickExpression(gamification.allQuestsCompletedToday, dailyTotals)}
         />
       </div>
 

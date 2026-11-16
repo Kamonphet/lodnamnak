@@ -14,7 +14,15 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { SHIRT_COLORS, SKIN_TONES } from '../domain/avatarOptions';
+import {
+  BOTTOM_STYLES,
+  CLOTH_COLORS,
+  HAIR_COLORS,
+  HAIR_STYLES,
+  SKIN_TONES,
+  TOP_STYLES,
+} from '../domain/avatarOptions';
+import { Avatar3DScene, resolveLook } from './Avatar3DScene';
 import { THAI_WEEKDAYS, WATER_GLASS_OPTIONS } from '../domain/appSettings';
 import { AppSettings, AvatarCustomization, UserProfile } from '../domain/types';
 
@@ -50,6 +58,75 @@ const Section: React.FC<{ icon: React.ReactNode; title: string; children: React.
     <div className="divide-y divide-white/60">{children}</div>
   </section>
 );
+
+function Swatches({
+  label,
+  options,
+  value,
+  onPick,
+}: {
+  label: string;
+  options: { hex: string; label: string }[];
+  value: string;
+  onPick: (hex: string) => void;
+}) {
+  return (
+    <div className="py-2.5 space-y-2">
+      <span className="text-sm text-ink-900">{label}</span>
+      <div className="flex flex-wrap gap-2">
+        {options.map((c) => {
+          const active = value.toLowerCase() === c.hex;
+          return (
+            <button
+              key={c.hex}
+              type="button"
+              onClick={() => onPick(c.hex)}
+              aria-label={`${label} ${c.label}`}
+              aria-pressed={active}
+              className={`w-8 h-8 rounded-full border-2 border-white shadow transition-transform ${
+                active ? 'scale-110 ring-2 ring-ink-900 ring-offset-2' : ''
+              }`}
+              style={{ backgroundColor: c.hex }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Chips<T extends string>({
+  label,
+  options,
+  value,
+  onPick,
+}: {
+  label: string;
+  options: { id: T; label: string }[];
+  value: string;
+  onPick: (id: T) => void;
+}) {
+  return (
+    <div className="py-2.5 space-y-2">
+      <span className="text-sm text-ink-900">{label}</span>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onPick(o.id)}
+            aria-pressed={value === o.id}
+            className={`tactile-btn h-9 px-3 rounded-full text-xs font-bold ${
+              value === o.id ? 'glass-btn-primary' : 'glass-pill text-ink-900'
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="py-2.5 flex items-center justify-between gap-3 min-h-[48px]">
@@ -113,8 +190,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
   onDeleteProfile,
 }) => {
   if (!open) return null;
-  const shirt = profile.avatarStyle?.shirtColor ?? '#2e8b67';
-  const skin = profile.avatarStyle?.skinTone ?? '#ffdfc8';
+  const look = resolveLook(profile.gender, profile.avatarStyle);
   const version = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '';
 
   return createPortal(
@@ -150,42 +226,44 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
           <Section icon={<Palette className="w-4 h-4" />} title="ตัวละคร">
-            <div className="py-2.5 space-y-2">
-              <span className="text-sm text-ink-900">สีชุด</span>
-              <div className="flex flex-wrap gap-2">
-                {SHIRT_COLORS.map((c) => (
-                  <button
-                    key={c.hex}
-                    type="button"
-                    onClick={() => onUpdateAvatar({ shirtColor: c.hex })}
-                    aria-label={`สีชุด ${c.label}`}
-                    aria-pressed={shirt === c.hex}
-                    className={`w-8 h-8 rounded-full border-2 border-white shadow transition-transform ${
-                      shirt === c.hex ? 'scale-110 ring-2 ring-ink-900 ring-offset-2' : ''
-                    }`}
-                    style={{ backgroundColor: c.hex }}
-                  />
-                ))}
-              </div>
+            <div className="py-2">
+              <Avatar3DScene
+                compact
+                gender={profile.gender}
+                age={profile.age}
+                heightCm={profile.heightCm}
+                currentWeightKg={profile.currentWeightKg}
+                targetWeightKg={profile.targetWeightKg}
+                primaryGoal={profile.primaryGoal}
+                avatarStyle={profile.avatarStyle}
+                equippedAccessory={profile.equippedAccessory}
+                expression="curious"
+                lowPower={settings.lowPower3d}
+              />
             </div>
-            <div className="py-2.5 space-y-2">
-              <span className="text-sm text-ink-900">สีผิว</span>
-              <div className="flex flex-wrap gap-2">
-                {SKIN_TONES.map((s) => (
-                  <button
-                    key={s.hex}
-                    type="button"
-                    onClick={() => onUpdateAvatar({ skinTone: s.hex })}
-                    aria-label={s.label}
-                    aria-pressed={skin === s.hex}
-                    className={`w-8 h-8 rounded-full border-2 border-white shadow transition-transform ${
-                      skin === s.hex ? 'scale-110 ring-2 ring-ink-900 ring-offset-2' : ''
-                    }`}
-                    style={{ backgroundColor: s.hex }}
-                  />
-                ))}
-              </div>
-            </div>
+            <Swatches label="สีผิว" options={SKIN_TONES} value={look.skinTone} onPick={(hex) => onUpdateAvatar({ skinTone: hex })} />
+            <Chips
+              label="ทรงผมชาย"
+              options={HAIR_STYLES.filter((h) => h.group === 'boy')}
+              value={look.hairStyle}
+              onPick={(id) => onUpdateAvatar({ hairStyle: id })}
+            />
+            <Chips
+              label="ทรงผมหญิง"
+              options={HAIR_STYLES.filter((h) => h.group === 'girl')}
+              value={look.hairStyle}
+              onPick={(id) => onUpdateAvatar({ hairStyle: id })}
+            />
+            <Swatches label="สีผม" options={HAIR_COLORS} value={look.hairColor} onPick={(hex) => onUpdateAvatar({ hairColor: hex })} />
+            <Chips label="เสื้อ" options={TOP_STYLES} value={look.top} onPick={(id) => onUpdateAvatar({ top: id })} />
+            <Swatches label="สีเสื้อ" options={CLOTH_COLORS} value={look.topColor} onPick={(hex) => onUpdateAvatar({ shirtColor: hex })} />
+            <Chips label="กางเกง / กระโปรง" options={BOTTOM_STYLES} value={look.bottom} onPick={(id) => onUpdateAvatar({ bottom: id })} />
+            <Swatches
+              label="สีกางเกง / กระโปรง"
+              options={CLOTH_COLORS}
+              value={look.bottomColor}
+              onPick={(hex) => onUpdateAvatar({ bottomColor: hex })}
+            />
           </Section>
 
           <Section icon={<Bell className="w-4 h-4" />} title="การแจ้งเตือน">

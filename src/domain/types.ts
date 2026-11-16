@@ -1,3 +1,4 @@
+import type { AvatarBottomStyle, AvatarHairStyle, AvatarTopStyle } from './avatarOptions';
 export type Gender = 'male' | 'female' | 'neutral';
 
 export type PrimaryGoal =
@@ -43,9 +44,14 @@ export type AvatarAccessoryId =
   | 'champion_crown';
 
 export interface AvatarCustomization {
+  /** สีเสื้อ */
   shirtColor: string;
   skinTone: string;
   hairColor?: string;
+  hairStyle?: AvatarHairStyle;
+  top?: AvatarTopStyle;
+  bottom?: AvatarBottomStyle;
+  bottomColor?: string;
 }
 
 export interface UserProfile {

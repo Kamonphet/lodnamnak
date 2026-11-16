@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Pause, Play, RotateCcw } from 'lucide-react';
+import { defaultLook, AvatarExpression, AvatarPose } from '../domain/avatarOptions';
 import { EXERCISE_CATALOG } from '../domain/exercisePlanner';
 import { interpretBmi } from '../domain/healthCalculator';
 import {
@@ -11,8 +12,9 @@ import {
   PrimaryGoal,
   WeeklyActivityLevel,
 } from '../domain/types';
+import { CharacterController, CharacterLook, shapeFromBmi } from './avatar/characterModel';
 
-export type AvatarPose = 'idle' | 'dumbbell' | 'run' | 'yoga' | 'muay_thai' | 'sport';
+export type { AvatarPose } from '../domain/avatarOptions';
 
 interface Avatar3DSceneProps {
   name?: string;
@@ -28,8 +30,12 @@ interface Avatar3DSceneProps {
   avatarStyle?: AvatarCustomization;
   equippedAccessory?: AvatarAccessoryId;
   defaultPose?: AvatarPose;
+  /** สีหน้าตัวละคร (แอปเลือกตามสถานะของวันนั้น) */
+  expression?: AvatarExpression;
   /** โหมดประหยัดแบต: เรนเดอร์ ~20fps ความละเอียด 1x และไม่หมุนเอง */
   lowPower?: boolean;
+  /** แสดงเฉพาะตัวละคร (ใช้เป็นตัวอย่างในหน้าตั้งค่า) */
+  compact?: boolean;
 }
 
 const GENDER_LABEL: Record<Gender, string> = {
@@ -44,55 +50,45 @@ function buildUserPoseButtons(
 ): { id: AvatarPose; label: string }[] {
   const buttons: { id: AvatarPose; label: string }[] = [{ id: 'idle', label: 'ยืนปกติ' }];
   const added = new Set<AvatarPose>(['idle']);
-
   const addUnique = (id: AvatarPose, label: string) => {
     if (!added.has(id) && buttons.length < 4) {
       added.add(id);
       buttons.push({ id, label });
     }
   };
-
   for (const ex of regularExercises) {
-    if (ex === 'dumbbell' || ex === 'weight_training') {
-      addUnique('dumbbell', EXERCISE_CATALOG[ex].label);
-    } else if (ex === 'yoga') {
-      addUnique('yoga', 'โยคะ/พิลาทิส');
-    } else if (ex === 'muay_thai') {
-      addUnique('muay_thai', 'มวยไทย');
-    } else if (ex === 'basketball' || ex === 'badminton' || ex === 'football') {
-      addUnique('sport', EXERCISE_CATALOG[ex].label);
-    } else if (
-      ex === 'running' ||
-      ex === 'incline_walk' ||
-      ex === 'walking' ||
-      ex === 'cycling' ||
-      ex === 'swimming' ||
-      ex === 'aerobics' ||
-      ex === 'hiit'
-    ) {
+    if (ex === 'dumbbell' || ex === 'weight_training') addUnique('dumbbell', EXERCISE_CATALOG[ex].label);
+    else if (ex === 'yoga') addUnique('yoga', 'โยคะ/พิลาทิส');
+    else if (ex === 'muay_thai') addUnique('muay_thai', 'มวยไทย');
+    else if (ex === 'basketball' || ex === 'badminton' || ex === 'football') addUnique('sport', EXERCISE_CATALOG[ex].label);
+    else if (['running', 'incline_walk', 'walking', 'cycling', 'swimming', 'aerobics', 'hiit'].includes(ex)) {
       addUnique('run', EXERCISE_CATALOG[ex].label);
     }
   }
-
   if (customExercises.length > 0 && buttons.length < 4) {
     const firstCustom = customExercises[0];
-    if (/โยคะ|พิลาทิส|ยืด/.test(firstCustom)) {
-      addUnique('yoga', firstCustom);
-    } else if (/มวย|บ็อกซิ่ง/.test(firstCustom)) {
-      addUnique('muay_thai', firstCustom);
-    } else if (/เวต|ดัมเบล/.test(firstCustom)) {
-      addUnique('dumbbell', firstCustom);
-    } else {
-      addUnique('sport', firstCustom);
-    }
+    if (/โยคะ|พิลาทิส|ยืด/.test(firstCustom)) addUnique('yoga', firstCustom);
+    else if (/มวย|บ็อกซิ่ง/.test(firstCustom)) addUnique('muay_thai', firstCustom);
+    else if (/เวต|ดัมเบล/.test(firstCustom)) addUnique('dumbbell', firstCustom);
+    else addUnique('sport', firstCustom);
   }
-
-  // เติมให้ครบ 4 ปุ่มสำหรับทดลองดูท่าทางได้สะดวก
   addUnique('run', 'คาร์ดิโอ');
   addUnique('dumbbell', 'เวต/ดัมเบล');
   addUnique('yoga', 'ยืดเหยียด');
-
   return buttons;
+}
+
+export function resolveLook(gender: Gender, style?: AvatarCustomization): CharacterLook {
+  const d = defaultLook(gender);
+  return {
+    skinTone: style?.skinTone || '#f2bfa5',
+    hairColor: style?.hairColor || '#3b2a22',
+    hairStyle: style?.hairStyle || d.hairStyle,
+    top: style?.top || d.top,
+    topColor: style?.shirtColor || d.topColor,
+    bottom: style?.bottom || d.bottom,
+    bottomColor: style?.bottomColor || d.bottomColor,
+  };
 }
 
 export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
@@ -102,19 +98,21 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
   heightCm,
   currentWeightKg,
   targetWeightKg,
-  primaryGoal,
-  activityLevel = 'moderate',
   regularExercises = [],
   customExercises = [],
   avatarStyle,
   equippedAccessory = 'none',
   defaultPose = 'idle',
+  expression = 'happy',
   lowPower = false,
+  compact = false,
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [pose, setPose] = useState<AvatarPose>(defaultPose);
   const [goalPreviewMix, setGoalPreviewMix] = useState<number>(0);
   const [autoSpin, setAutoSpin] = useState<boolean>(!lowPower);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [reloadKey, setReloadKey] = useState(0);
   const lowPowerRef = useRef(lowPower);
   lowPowerRef.current = lowPower;
   useEffect(() => {
@@ -126,563 +124,147 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     [regularExercises, customExercises]
   );
 
-  // ตรวจสอบว่าผู้ใช้กรอกข้อมูลจริงเข้ามาแล้วหรือยัง (รองรับทุกน้ำหนัก/ส่วนสูงที่เป็นจริงโดยไม่ดีดกลับ 60 กก.)
   const hasValidWeight =
-    typeof currentWeightKg === 'number' &&
-    Number.isFinite(currentWeightKg) &&
-    currentWeightKg >= 20 &&
-    currentWeightKg <= 300;
+    typeof currentWeightKg === 'number' && Number.isFinite(currentWeightKg) && currentWeightKg >= 20 && currentWeightKg <= 300;
   const hasValidHeight =
-    typeof heightCm === 'number' &&
-    Number.isFinite(heightCm) &&
-    heightCm >= 100 &&
-    heightCm <= 240;
-  const hasValidAge =
-    typeof age === 'number' && Number.isFinite(age) && age >= 12 && age <= 110;
+    typeof heightCm === 'number' && Number.isFinite(heightCm) && heightCm >= 100 && heightCm <= 240;
+  const hasValidAge = typeof age === 'number' && Number.isFinite(age) && age >= 12 && age <= 110;
   const hasRealBodyStats = hasValidWeight && hasValidHeight;
 
   const effectiveHeightCm = hasValidHeight ? heightCm! : 165;
   const effectiveWeightKg = hasValidWeight ? currentWeightKg! : 58;
   const effectiveTargetKg =
-    typeof targetWeightKg === 'number' &&
-    Number.isFinite(targetWeightKg) &&
-    targetWeightKg >= 20 &&
-    targetWeightKg <= 300
+    typeof targetWeightKg === 'number' && Number.isFinite(targetWeightKg) && targetWeightKg >= 20 && targetWeightKg <= 300
       ? targetWeightKg
       : effectiveWeightKg;
-  const effectiveAge = hasValidAge ? age! : 28;
-
   const heightM = effectiveHeightCm / 100;
   const currentBmi = effectiveWeightKg / (heightM * heightM);
   const targetBmi = effectiveTargetKg / (heightM * heightM);
-  const blendedWeight =
-    effectiveWeightKg + (effectiveTargetKg - effectiveWeightKg) * goalPreviewMix;
+  const blendedWeight = effectiveWeightKg + (effectiveTargetKg - effectiveWeightKg) * goalPreviewMix;
   const blendedBmi = currentBmi + (targetBmi - currentBmi) * goalPreviewMix;
+  const bmiInterpretation = hasRealBodyStats ? interpretBmi(Number(blendedBmi.toFixed(1))) : null;
 
-  const bmiInterpretation = hasRealBodyStats
-    ? interpretBmi(Number(blendedBmi.toFixed(1)))
-    : null;
+  const look = resolveLook(gender, avatarStyle);
 
-  const hasStrengthFocus =
-    primaryGoal === 'build_muscle' ||
-    activityLevel === 'active' ||
-    activityLevel === 'very_active' ||
-    regularExercises.includes('weight_training') ||
-    regularExercises.includes('dumbbell') ||
-    regularExercises.includes('muay_thai');
-
-  const resolvedShirtColor =
-    avatarStyle?.shirtColor ||
-    (gender === 'female' ? '#e87a5d' : gender === 'male' ? '#2e8b67' : '#3b82c4');
-  const resolvedSkinTone = avatarStyle?.skinTone || '#ffdfc8';
-  const resolvedHairColor =
-    avatarStyle?.hairColor || (effectiveAge >= 60 ? '#7b7f85' : '#362a26');
-
-  const poseRef = useRef<AvatarPose>(pose);
-  poseRef.current = pose;
-
-  const bodyParamsRef = useRef({
-    blendedBmi,
-    gender,
-    effectiveHeightCm,
-    effectiveAge,
-    hasStrengthFocus,
-    hasRealBodyStats,
-    resolvedShirtColor,
-    resolvedSkinTone,
-    resolvedHairColor,
-    equippedAccessory,
-  });
-  bodyParamsRef.current = {
-    blendedBmi,
-    gender,
-    effectiveHeightCm,
-    effectiveAge,
-    hasStrengthFocus,
-    hasRealBodyStats,
-    resolvedShirtColor,
-    resolvedSkinTone,
-    resolvedHairColor,
-    equippedAccessory,
-  };
-
-  const rotationTargetRef = useRef(0.16);
-  const currentRotationRef = useRef(0.16);
+  // ค่าที่ลูปแอนิเมชันอ่านทุกเฟรม
+  const liveRef = useRef({ pose, bmi: blendedBmi, gender, look, expression, equippedAccessory, heightCm: effectiveHeightCm });
+  liveRef.current = { pose, bmi: blendedBmi, gender, look, expression, equippedAccessory, heightCm: effectiveHeightCm };
+  const rotationTargetRef = useRef(0.35);
+  const currentRotationRef = useRef(0.35);
   const autoSpinRef = useRef(autoSpin);
   autoSpinRef.current = autoSpin;
 
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
+    let disposed = false;
+    setLoadState('loading');
 
     const width = container.clientWidth || 320;
     const height = container.clientHeight || 212;
-
     const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, width / height, 0.05, 20);
+    camera.position.set(0, 0.62, 2.55);
+    camera.lookAt(0, 0.47, 0);
 
-    const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 50);
-    camera.position.set(0, 1.38, 5.45);
-    camera.lookAt(0, 1.08, 0);
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance',
-    });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(lowPowerRef.current ? 1 : Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.NeutralToneMapping;
     container.replaceChildren(renderer.domElement);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xf2e4d4, 1.25);
-    hemiLight.position.set(0, 6, 0);
-    scene.add(hemiLight);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xf2e4d4, 1.6));
+    const key = new THREE.DirectionalLight(0xfffaf2, 1.6);
+    key.position.set(1.5, 2.5, 2.5);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0xd7efe3, 0.9);
+    rim.position.set(-2, 1.5, -1.5);
+    scene.add(rim);
 
-    const keyLight = new THREE.DirectionalLight(0xfffaf2, 1.15);
-    keyLight.position.set(3.2, 5.5, 4.5);
-    scene.add(keyLight);
-
-    const rimLight = new THREE.DirectionalLight(0xd7efe3, 0.75);
-    rimLight.position.set(-3.5, 3.0, -2.5);
-    scene.add(rimLight);
-
-    const skinMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(bodyParamsRef.current.resolvedSkinTone),
-      roughness: 0.64,
-      metalness: 0.02,
-    });
-    const hairMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(bodyParamsRef.current.resolvedHairColor),
-      roughness: 0.72,
-      metalness: 0.03,
-    });
-    const shirtMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(bodyParamsRef.current.resolvedShirtColor),
-      roughness: 0.56,
-      metalness: 0.04,
-    });
-    const shortsMat = new THREE.MeshStandardMaterial({
-      color: 0x26352e,
-      roughness: 0.7,
-      metalness: 0.04,
-    });
-    const shoeMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.45,
-      metalness: 0.05,
-    });
-    const cheekMat = new THREE.MeshStandardMaterial({
-      color: 0xff9b93,
-      roughness: 0.6,
-      transparent: true,
-      opacity: 0.7,
-    });
-    const darkEyeMat = new THREE.MeshStandardMaterial({
-      color: 0x1d2421,
-      roughness: 0.25,
-    });
-    const propMintMat = new THREE.MeshStandardMaterial({
-      color: 0x226f51,
-      roughness: 0.35,
-      metalness: 0.2,
-    });
-    const gloveMat = new THREE.MeshStandardMaterial({
-      color: 0xd9633b,
-      roughness: 0.45,
-    });
-    const rulerMat = new THREE.MeshStandardMaterial({
-      color: 0xb0dfca,
-      roughness: 0.6,
-    });
-    const goldMat = new THREE.MeshStandardMaterial({
-      color: 0xf4b93b,
-      emissive: 0x5c3c00,
-      emissiveIntensity: 0.2,
-      roughness: 0.26,
-      metalness: 0.62,
-    });
-    const auraMat = new THREE.MeshStandardMaterial({
-      color: 0x3bd69c,
-      emissive: 0x1d9b6c,
-      emissiveIntensity: 0.45,
-      roughness: 0.22,
-      transparent: true,
-      opacity: 0.85,
-    });
-
-    const stageGroup = new THREE.Group();
-    scene.add(stageGroup);
-
-    // แท่นยืนทรงกลม
+    // แท่นยืน
+    const stage = new THREE.Group();
+    scene.add(stage);
     const platform = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.12, 1.2, 0.14, 44),
-      new THREE.MeshStandardMaterial({
-        color: 0xdff3e9,
-        roughness: 0.45,
-        metalness: 0.06,
-      })
+      new THREE.CylinderGeometry(0.42, 0.45, 0.04, 48),
+      new THREE.MeshStandardMaterial({ color: 0xdff3e9, roughness: 0.45 })
     );
-    platform.position.y = 0.07;
-    stageGroup.add(platform);
-
+    platform.position.y = -0.02;
+    stage.add(platform);
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(1.14, 0.024, 16, 48),
+      new THREE.TorusGeometry(0.43, 0.008, 12, 64),
       new THREE.MeshStandardMaterial({ color: 0x2e8b67, roughness: 0.42 })
     );
     ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.14;
-    stageGroup.add(ring);
+    stage.add(ring);
 
-    // วงแหวนออร่ามรกต (ปลดล็อกผ่านระบบ Gamification)
-    const auraGroup = new THREE.Group();
-    stageGroup.add(auraGroup);
-
-    const auraRing = new THREE.Mesh(
-      new THREE.TorusGeometry(1.26, 0.022, 16, 56),
-      auraMat
-    );
-    auraRing.rotation.x = Math.PI / 2;
-    auraRing.position.y = 0.19;
-    auraGroup.add(auraRing);
-
-    const auraOrbs: THREE.Mesh[] = [];
-    const auraOrbGeo = new THREE.SphereGeometry(0.042, 12, 12);
-    for (let i = 0; i < 4; i++) {
-      const orb = new THREE.Mesh(auraOrbGeo, auraMat);
-      auraGroup.add(orb);
-      auraOrbs.push(orb);
-    }
-
-    // เสาวัดส่วนสูงจำลองด้านข้าง (อยู่คงที่ ไม่หมุนมาบังตัวละคร)
-    const rulerGroup = new THREE.Group();
-    rulerGroup.position.set(-0.92, 0.14, -0.34);
-    stageGroup.add(rulerGroup);
-
-    const rulerPole = new THREE.Mesh(
-      new THREE.BoxGeometry(0.045, 2.25, 0.045),
-      rulerMat
-    );
-    rulerPole.position.y = 1.125;
-    rulerGroup.add(rulerPole);
-
-    // ขีดบอกระดับ 140, 160, 180, 200 ซม.
-    [0.65, 1.05, 1.45, 1.85, 2.15].forEach((tickY, idx) => {
-      const tick = new THREE.Mesh(
-        new THREE.BoxGeometry(idx % 2 === 1 ? 0.16 : 0.1, 0.02, 0.03),
-        propMintMat
-      );
-      tick.position.set(0.06, tickY, 0);
-      rulerGroup.add(tick);
+    // ออร่ามรกต (รางวัลจากภารกิจ)
+    const auraMat = new THREE.MeshStandardMaterial({
+      color: 0x3bd69c, emissive: 0x1d9b6c, emissiveIntensity: 0.45, roughness: 0.22, transparent: true, opacity: 0.85,
     });
+    const aura = new THREE.Group();
+    const auraRing = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.008, 12, 64), auraMat);
+    auraRing.rotation.x = Math.PI / 2;
+    aura.add(auraRing);
+    const orbs = [0, 1, 2, 3].map(() => {
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.016, 12, 12), auraMat);
+      aura.add(orb);
+      return orb;
+    });
+    stage.add(aura);
 
-    const heightPointer = new THREE.Mesh(
-      new THREE.BoxGeometry(0.32, 0.035, 0.06),
-      gloveMat
-    );
-    heightPointer.position.set(0.14, 1.9, 0);
-    rulerGroup.add(heightPointer);
+    const turntable = new THREE.Group();
+    turntable.rotation.y = rotationTargetRef.current;
+    stage.add(turntable);
 
-    // แท่นหมุน 360 องศาอัตโนมัติสำหรับตัวละคร
-    const turntableGroup = new THREE.Group();
-    turntableGroup.rotation.y = rotationTargetRef.current;
-    stageGroup.add(turntableGroup);
-
-    // กลุ่มตัวละคร แยกชิ้นส่วนตามกายวิภาคจริง (ไม่มีชิ้นส่วนเสื้อทะลุกางเกง)
-    const characterGroup = new THREE.Group();
-    characterGroup.position.y = 0.14;
-    turntableGroup.add(characterGroup);
-
-    // 1. ขาซ้าย-ขวา (ความยาวปรับตามส่วนสูงจริง heightCm)
-    function createSegmentedLeg(side: -1 | 1) {
-      const hipPivot = new THREE.Group();
-      hipPivot.position.set(side * 0.17, 0.68, 0);
-
-      // ขากางเกงขาสั้นด้านบน
-      const shortCuff = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.135, 0.125, 0.18, 18),
-        shortsMat
-      );
-      shortCuff.position.y = -0.09;
-      hipPivot.add(shortCuff);
-
-      // ช่วงขา
-      const legShaft = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.105, 0.088, 0.42, 18),
-        skinMat
-      );
-      legShaft.position.y = -0.34;
-      hipPivot.add(legShaft);
-
-      // รองเท้า
-      const shoe = new THREE.Mesh(
-        new THREE.BoxGeometry(0.21, 0.12, 0.3),
-        shoeMat
-      );
-      shoe.position.set(0, -0.58, 0.045);
-      hipPivot.add(shoe);
-
-      return { hipPivot, shortCuff, legShaft, shoe };
-    }
-
-    const leftLeg = createSegmentedLeg(-1);
-    const rightLeg = createSegmentedLeg(1);
-    characterGroup.add(leftLeg.hipPivot);
-    characterGroup.add(rightLeg.hipPivot);
-
-    // 2. ลำตัวแยกส่วน: สะโพก(กางเกง) -> เอว/หน้าท้อง -> อก/ไหล่ -> คอ -> ศีรษะ
-    const upperBodyGroup = new THREE.Group();
-    upperBodyGroup.position.y = 0.68;
-    characterGroup.add(upperBodyGroup);
-
-    // กางเกงช่วงสะโพก (ปิดสนิทด้านล่าง ไม่มีเสื้อทะลุ)
-    const pelvisMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.28, 0.27, 0.2, 24),
-      shortsMat
-    );
-    pelvisMesh.position.y = 0.09;
-    upperBodyGroup.add(pelvisMesh);
-
-    // ช่วงเอวและหน้าท้อง (แบนเรียบเมื่อ BMI ปกติ และค่อยๆ ขยายเมื่อ BMI สูงขึ้นจริงเท่านั้น)
-    const waistMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.29, 0.28, 0.28, 24),
-      shirtMat
-    );
-    waistMesh.position.y = 0.31;
-    upperBodyGroup.add(waistMesh);
-
-    const softBellyCurve = new THREE.Mesh(
-      new THREE.SphereGeometry(0.27, 24, 20),
-      shirtMat
-    );
-    softBellyCurve.position.set(0, 0.29, 0.02);
-    upperBodyGroup.add(softBellyCurve);
-
-    // ช่วงอกและไหล่ (กว้าง-แคบตามเพศและมวลกล้ามเนื้อ)
-    const chestMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.32, 0.29, 0.3, 24),
-      shirtMat
-    );
-    chestMesh.position.y = 0.56;
-    upperBodyGroup.add(chestMesh);
-
-    const shoulderCap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.32, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
-      shirtMat
-    );
-    shoulderCap.position.y = 0.7;
-    shoulderCap.scale.set(1, 0.35, 0.92);
-    upperBodyGroup.add(shoulderCap);
-
-    // ลำคอ
-    const neckMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.11, 0.12, 0.12, 16),
-      skinMat
-    );
-    neckMesh.position.y = 0.82;
-    upperBodyGroup.add(neckMesh);
-
-    // 3. ศีรษะและใบหน้า
-    const headGroup = new THREE.Group();
-    headGroup.position.y = 1.16;
-    upperBodyGroup.add(headGroup);
-
-    const headMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.38, 28, 24),
-      skinMat
-    );
-    headGroup.add(headMesh);
-
-    const hairCap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.395, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.56),
-      hairMat
-    );
-    hairCap.position.y = 0.03;
-    hairCap.rotation.x = -0.14;
-    headGroup.add(hairCap);
-
-    const headband = new THREE.Mesh(
-      new THREE.TorusGeometry(0.378, 0.032, 12, 36),
-      propMintMat
-    );
-    headband.rotation.x = Math.PI / 2 - 0.18;
-    headband.position.y = 0.11;
-    headGroup.add(headband);
-
-    const headbandGem = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.052, 0),
-      goldMat
-    );
-    headbandGem.position.set(0, 0.175, 0.375);
-    headGroup.add(headbandGem);
-
-    // มงกุฎแชมเปี้ยน (ปลดล็อกผ่านระบบ Gamification)
-    const crownGroup = new THREE.Group();
-    crownGroup.position.set(0, 0.4, 0.02);
-    crownGroup.rotation.x = -0.08;
-    headGroup.add(crownGroup);
-
-    const crownBand = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.175, 0.16, 0.075, 24),
-      goldMat
-    );
-    crownGroup.add(crownBand);
-
+    // ที่คาดผม / มงกุฎ ผูกกับกระดูกศีรษะ
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xf4b93b, emissive: 0x5c3c00, emissiveIntensity: 0.2, roughness: 0.26, metalness: 0.62 });
+    const mintMat = new THREE.MeshStandardMaterial({ color: 0x226f51, roughness: 0.35 });
+    const headband = new THREE.Mesh(new THREE.TorusGeometry(0.182, 0.012, 10, 48), goldMat);
+    headband.rotation.x = Math.PI / 2 - 0.25;
+    headband.position.set(0, 0.2, 0.01);
+    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.018), mintMat);
+    gem.position.set(0, 0.215, 0.18);
+    const crown = new THREE.Group();
+    const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.08, 0.035, 20, 1, true), goldMat);
+    crown.add(crownBase);
     for (let i = 0; i < 5; i++) {
-      const angle = (i / 5) * Math.PI * 2;
-      const spike = new THREE.Mesh(
-        new THREE.ConeGeometry(0.044, 0.115, 10),
-        goldMat
-      );
-      spike.position.set(
-        Math.sin(angle) * 0.145,
-        0.085,
-        Math.cos(angle) * 0.145
-      );
-      crownGroup.add(spike);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.045, 8), goldMat);
+      const a = (i / 5) * Math.PI * 2;
+      spike.position.set(Math.cos(a) * 0.072, 0.035, Math.sin(a) * 0.072);
+      crown.add(spike);
     }
+    crown.position.set(0, 0.315, -0.01);
 
-    const crownFrontJewel = new THREE.Mesh(
-      new THREE.SphereGeometry(0.032, 12, 12),
-      auraMat
-    );
-    crownFrontJewel.position.set(0, 0.01, 0.172);
-    crownGroup.add(crownFrontJewel);
+    let character: CharacterController | null = null;
+    CharacterController.create()
+      .then((c) => {
+        if (disposed) {
+          c.dispose();
+          return;
+        }
+        character = c;
+        turntable.add(c.root);
+        const head = c.headBone();
+        head?.add(headband, gem, crown);
+        setLoadState('ready');
+      })
+      .catch(() => {
+        if (!disposed) setLoadState('error');
+      });
 
-    const ponytail = new THREE.Mesh(
-      new THREE.CapsuleGeometry(0.1, 0.22, 10, 16),
-      hairMat
-    );
-    ponytail.position.set(0, 0.08, -0.41);
-    ponytail.rotation.x = 0.65;
-    headGroup.add(ponytail);
-
-    const hairTuft = new THREE.Mesh(
-      new THREE.ConeGeometry(0.1, 0.22, 12),
-      hairMat
-    );
-    hairTuft.position.set(0.05, 0.42, 0.08);
-    hairTuft.rotation.z = -0.28;
-    headGroup.add(hairTuft);
-
-    const neutralBun = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 16, 16),
-      hairMat
-    );
-    neutralBun.position.set(0, 0.35, -0.22);
-    headGroup.add(neutralBun);
-
-    const eyeLeft = new THREE.Mesh(new THREE.SphereGeometry(0.044, 16, 16), darkEyeMat);
-    eyeLeft.position.set(-0.13, 0.02, 0.345);
-    headGroup.add(eyeLeft);
-
-    const eyeRight = new THREE.Mesh(new THREE.SphereGeometry(0.044, 16, 16), darkEyeMat);
-    eyeRight.position.set(0.13, 0.02, 0.345);
-    headGroup.add(eyeRight);
-
-    const eyeSparkleGeo = new THREE.SphereGeometry(0.015, 10, 10);
-    const sparkleLeft = new THREE.Mesh(eyeSparkleGeo, shoeMat);
-    sparkleLeft.position.set(-0.116, 0.038, 0.382);
-    headGroup.add(sparkleLeft);
-
-    const sparkleRight = new THREE.Mesh(eyeSparkleGeo, shoeMat);
-    sparkleRight.position.set(0.144, 0.038, 0.382);
-    headGroup.add(sparkleRight);
-
-    const cheekLeft = new THREE.Mesh(new THREE.SphereGeometry(0.058, 14, 14), cheekMat);
-    cheekLeft.scale.set(1.2, 0.72, 0.45);
-    cheekLeft.position.set(-0.22, -0.055, 0.32);
-    headGroup.add(cheekLeft);
-
-    const cheekRight = new THREE.Mesh(new THREE.SphereGeometry(0.058, 14, 14), cheekMat);
-    cheekRight.scale.set(1.2, 0.72, 0.45);
-    cheekRight.position.set(0.22, -0.055, 0.32);
-    headGroup.add(cheekRight);
-
-    const smileMesh = new THREE.Mesh(
-      new THREE.TorusGeometry(0.062, 0.015, 10, 24, Math.PI),
-      darkEyeMat
-    );
-    smileMesh.rotation.z = Math.PI;
-    smileMesh.position.set(0, -0.075, 0.355);
-    headGroup.add(smileMesh);
-
-    // 4. แขนซ้าย-ขวา + ดัมเบล + นวมมวย
-    function createSegmentedArm(side: -1 | 1) {
-      const shoulderPivot = new THREE.Group();
-      shoulderPivot.position.set(side * 0.38, 0.66, 0);
-
-      const sleeveMesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.11, 0.105, 0.16, 16),
-        shirtMat
-      );
-      sleeveMesh.position.y = -0.06;
-      shoulderPivot.add(sleeveMesh);
-
-      const armMesh = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.085, 0.32, 12, 16),
-        skinMat
-      );
-      armMesh.position.y = -0.22;
-      shoulderPivot.add(armMesh);
-
-      const boxingGlove = new THREE.Mesh(
-        new THREE.SphereGeometry(0.125, 16, 16),
-        gloveMat
-      );
-      boxingGlove.position.set(0, -0.4, 0.02);
-      shoulderPivot.add(boxingGlove);
-
-      const dumbbellGroup = new THREE.Group();
-      dumbbellGroup.position.set(0, -0.4, 0.05);
-      const bar = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.02, 0.02, 0.24, 12),
-        shortsMat
-      );
-      bar.rotation.z = Math.PI / 2;
-      dumbbellGroup.add(bar);
-
-      const plateGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.045, 16);
-      const plateL = new THREE.Mesh(plateGeo, propMintMat);
-      plateL.rotation.z = Math.PI / 2;
-      plateL.position.x = -0.1;
-      dumbbellGroup.add(plateL);
-
-      const plateR = new THREE.Mesh(plateGeo, propMintMat);
-      plateR.rotation.z = Math.PI / 2;
-      plateR.position.x = 0.1;
-      dumbbellGroup.add(plateR);
-
-      shoulderPivot.add(dumbbellGroup);
-
-      return { shoulderPivot, sleeveMesh, armMesh, boxingGlove, dumbbellGroup };
-    }
-
-    const leftArm = createSegmentedArm(-1);
-    const rightArm = createSegmentedArm(1);
-    upperBodyGroup.add(leftArm.shoulderPivot);
-    upperBodyGroup.add(rightArm.shoulderPivot);
-
-    const sportBall = new THREE.Mesh(
-      new THREE.SphereGeometry(0.175, 20, 20),
-      gloveMat
-    );
-    sportBall.position.set(0.5, 0.42, 0.3);
-    characterGroup.add(sportBall);
-
-    // หมุนอัตโนมัติ 360 องศา + รองรับการใช้นิ้วลากดูมุมอิสระ
+    // ลากหมุนดูรอบตัว
     let isDragging = false;
     let prevX = 0;
     let resumeSpinAt = 0;
-
     const onPointerDown = (e: PointerEvent) => {
       isDragging = true;
       prevX = e.clientX;
     };
     const onPointerMove = (e: PointerEvent) => {
       if (!isDragging) return;
-      const dx = e.clientX - prevX;
+      rotationTargetRef.current += (e.clientX - prevX) * 0.013;
       prevX = e.clientX;
-      rotationTargetRef.current += dx * 0.013;
     };
     const onPointerUp = () => {
       if (isDragging) {
@@ -690,13 +272,11 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
         resumeSpinAt = performance.now() + 1400;
       }
     };
-
-    const domElem = renderer.domElement;
-    domElem.addEventListener('pointerdown', onPointerDown);
+    const dom = renderer.domElement;
+    dom.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerUp);
-
     const handleResize = () => {
       if (!mountRef.current) return;
       const w = mountRef.current.clientWidth || 320;
@@ -709,228 +289,103 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
 
     let animId = 0;
     let elapsed = 0;
-    const clock = new THREE.Clock();
-
     let lastFrameAt = 0;
+    const clock = new THREE.Clock();
+    let lastLookKey = '';
     const animate = () => {
       animId = requestAnimationFrame(animate);
-      // ไม่วาดตอนแอปถูกซ่อน และจำกัดเฟรมในโหมดประหยัดแบต
       if (document.hidden) return;
       const now = performance.now();
       if (lowPowerRef.current && now - lastFrameAt < 50) return;
       lastFrameAt = now;
       const dt = Math.min(0.05, clock.getDelta());
       elapsed += dt;
-      const t = elapsed;
-      const params = bodyParamsRef.current;
-      const activePose = poseRef.current;
+      const live = liveRef.current;
 
-      // 1. คำนวณส่วนสูงจริง (120 ซม. -> 210 ซม.) ปรับความยาวขา ลำตัว และขีดวัดส่วนสูงด้านหลัง
-      const clampedHeight = Math.max(125, Math.min(210, params.effectiveHeightCm));
-      const heightRatio = clampedHeight / 165; // 165cm = 1.0
-      const legScaleY = Math.max(0.76, Math.min(1.28, 0.98 * heightRatio));
-      const torsoScaleY = Math.max(0.84, Math.min(1.18, 0.99 * Math.pow(heightRatio, 0.72)));
+      if (character) {
+        const lookKey = JSON.stringify(live.look) + live.expression;
+        if (lookKey !== lastLookKey) {
+          character.setLook(live.look);
+          character.setExpression(live.expression);
+          lastLookKey = lookKey;
+        }
+        const g = live.gender === 'female' || live.gender === 'male' ? live.gender : 'neutral';
+        character.setShape(shapeFromBmi(Math.max(14, Math.min(42, live.bmi)), g));
+        // สูง/เตี้ยตามส่วนสูงจริงเล็กน้อย (ตัวละครยังคงสัดส่วนน่ารัก)
+        const s = Math.max(0.92, Math.min(1.08, live.heightCm / 165));
+        character.root.scale.setScalar(s);
+        const lift = character.pose(live.pose, elapsed);
+        character.root.position.y = lift;
+      }
 
-      leftLeg.hipPivot.scale.y = legScaleY;
-      rightLeg.hipPivot.scale.y = legScaleY;
-      const hipHeight = 0.64 * legScaleY;
-      leftLeg.hipPivot.position.y = hipHeight;
-      rightLeg.hipPivot.position.y = hipHeight;
-
-      upperBodyGroup.position.y = hipHeight;
-      upperBodyGroup.scale.y = torsoScaleY;
-
-      // รักษาสัดส่วนศีรษะไม่ให้ยืดเบี้ยวตามลำตัว
-      headGroup.scale.y = 1 / torsoScaleY;
-
-      // อัปเดตเข็มชี้ระดับความสูงด้านหลังให้ตรงกับยอดศีรษะจริง
-      const headTopY = hipHeight + 1.54 * torsoScaleY;
-      heightPointer.position.y = Math.max(0.55, Math.min(2.2, headTopY));
-
-      // 2. คำนวณสัดส่วนตาม BMI จริง + เพศ + มวลกล้ามเนื้อ
-      const clampedBmi = Math.max(15.0, Math.min(40.0, params.blendedBmi));
-      // เมื่อ BMI <= 22.5 หน้าท้องจะแบนเรียบ (bellyExtra = 0) จะค่อยๆ นูนขึ้นเมื่อ BMI > 23 เท่านั้น
-      const leanDelta = (clampedBmi - 20.5) / 12; // ติดลบเมื่อผอม, 0 เมื่อสมส่วน, บวกเมื่อท้วม/อ้วน
-      const excessBmiOver23 = Math.max(0, (clampedBmi - 22.8) / 11);
-
-      const genderShoulderBase =
-        params.gender === 'male' ? 1.09 : params.gender === 'female' ? 0.93 : 1.0;
-      const genderHipBase =
-        params.gender === 'female' ? 1.07 : params.gender === 'male' ? 0.95 : 1.0;
-      const muscleShoulderBoost = params.hasStrengthFocus ? 0.09 : 0;
-
-      const waistWidth = Math.max(0.74, Math.min(1.48, 0.94 + leanDelta * 0.34));
-      const chestWidth = Math.max(
-        0.78,
-        Math.min(1.5, genderShoulderBase + muscleShoulderBoost + leanDelta * 0.24)
-      );
-      const hipWidth = Math.max(
-        0.78,
-        Math.min(1.48, genderHipBase * (0.95 + leanDelta * 0.3))
-      );
-
-      chestMesh.scale.set(chestWidth, 1, Math.max(0.84, 0.92 + leanDelta * 0.24));
-      shoulderCap.scale.set(chestWidth, 0.35, Math.max(0.84, 0.92 + leanDelta * 0.24));
-      waistMesh.scale.set(waistWidth, 1, Math.max(0.82, 0.88 + leanDelta * 0.32));
-      pelvisMesh.scale.set(hipWidth, 1, Math.max(0.85, 0.92 + leanDelta * 0.28));
-
-      // หน้าท้องเสริม: ซ่อนแนบไปกับเอวเมื่อผอม/สมส่วน, ค่อยๆ ยื่นอย่างนุ่มนวลเมื่อ BMI > 23
-      softBellyCurve.visible = excessBmiOver23 > 0.02;
-      softBellyCurve.scale.set(
-        waistWidth * 1.03,
-        0.82 + excessBmiOver23 * 0.2,
-        0.86 + excessBmiOver23 * 0.55
-      );
-      softBellyCurve.position.z = 0.015 + excessBmiOver23 * 0.09;
-
-      // แขน ขา และแก้ม ปรับตาม BMI และกล้ามเนื้อ
-      const limbThickness = Math.max(
-        0.8,
-        Math.min(1.3, 0.96 + leanDelta * 0.2 + (params.hasStrengthFocus ? 0.06 : 0))
-      );
-      leftArm.armMesh.scale.set(limbThickness, 1, limbThickness);
-      rightArm.armMesh.scale.set(limbThickness, 1, limbThickness);
-      leftArm.sleeveMesh.scale.set(limbThickness, 1, limbThickness);
-      rightArm.sleeveMesh.scale.set(limbThickness, 1, limbThickness);
-
-      leftLeg.legShaft.scale.set(limbThickness, 1, limbThickness);
-      rightLeg.legShaft.scale.set(limbThickness, 1, limbThickness);
-      leftLeg.shortCuff.scale.set(hipWidth * 0.96, 1, hipWidth * 0.96);
-      rightLeg.shortCuff.scale.set(hipWidth * 0.96, 1, hipWidth * 0.96);
-
-      const legSpread = Math.max(0.15, Math.min(0.23, 0.165 * hipWidth));
-      leftLeg.hipPivot.position.x = -legSpread;
-      rightLeg.hipPivot.position.x = legSpread;
-
-      const shoulderX = 0.34 * chestWidth + 0.05;
-      leftArm.shoulderPivot.position.x = -shoulderX;
-      rightArm.shoulderPivot.position.x = shoulderX;
-
-      const faceRoundness = Math.max(0.95, Math.min(1.12, 1.0 + leanDelta * 0.09));
-      headMesh.scale.set(faceRoundness, 0.98, 0.98);
-
-      // 3. สีผิว สีเสื้อ ทรงผม และสีผมตามข้อมูลแต่ละคน
-      shirtMat.color.set(params.resolvedShirtColor);
-      skinMat.color.set(params.resolvedSkinTone);
-      hairMat.color.set(params.resolvedHairColor);
-
-      ponytail.visible = params.gender === 'female';
-      hairTuft.visible = params.gender === 'male';
-      neutralBun.visible = params.gender === 'neutral';
-
-      // ไอเทมรางวัล Gamification บนตัวละครและฐานยืน
-      const acc = params.equippedAccessory;
-      const hasGoldBand = acc === 'gold_headband' || acc === 'champion_crown';
-      headband.material = hasGoldBand ? goldMat : propMintMat;
-      headbandGem.visible = acc === 'gold_headband';
-      crownGroup.visible = acc === 'champion_crown';
-
-      const showAura = acc === 'emerald_aura' || acc === 'champion_crown';
-      auraGroup.visible = showAura;
-      if (showAura) {
-        auraRing.position.y = 0.19 + Math.sin(t * 2.6) * 0.03;
-        auraOrbs.forEach((orb, idx) => {
-          const orbAngle = t * 1.35 + (idx * Math.PI) / 2;
-          orb.position.set(
-            Math.cos(orbAngle) * 1.26,
-            0.24 + Math.sin(t * 3 + idx) * 0.045,
-            Math.sin(orbAngle) * 1.26
-          );
+      const acc = live.equippedAccessory;
+      headband.visible = acc === 'gold_headband' || acc === 'champion_crown';
+      gem.visible = acc === 'gold_headband';
+      crown.visible = acc === 'champion_crown';
+      aura.visible = acc === 'emerald_aura' || acc === 'champion_crown';
+      if (aura.visible) {
+        auraRing.position.y = 0.06 + Math.sin(elapsed * 2.6) * 0.01;
+        orbs.forEach((orb, i) => {
+          const a = elapsed * 1.35 + (i * Math.PI) / 2;
+          orb.position.set(Math.cos(a) * 0.47, 0.08 + Math.sin(elapsed * 3 + i) * 0.015, Math.sin(a) * 0.47);
         });
       }
 
-      // อุปกรณ์ตามท่าออกกำลังกาย
-      leftArm.dumbbellGroup.visible = activePose === 'dumbbell';
-      rightArm.dumbbellGroup.visible = activePose === 'dumbbell';
-      leftArm.boxingGlove.visible = activePose === 'muay_thai';
-      rightArm.boxingGlove.visible = activePose === 'muay_thai';
-      sportBall.visible = activePose === 'sport';
-
-      // รีเซ็ตมุมพื้นฐานก่อนคำนวณท่าทาง
-      characterGroup.position.y = 0.14;
-      leftLeg.hipPivot.rotation.set(0, 0, 0);
-      rightLeg.hipPivot.rotation.set(0, 0, 0);
-
-      if (activePose === 'idle') {
-        characterGroup.position.y = 0.14 + Math.sin(t * 2.2) * 0.02;
-        headGroup.rotation.z = Math.sin(t * 1.5) * 0.035;
-        leftArm.shoulderPivot.rotation.set(Math.sin(t * 2.2) * 0.07, 0, 0.14);
-        rightArm.shoulderPivot.rotation.set(-Math.sin(t * 2.2) * 0.07, 0, -0.14);
-      } else if (activePose === 'dumbbell') {
-        characterGroup.position.y = 0.14 + Math.abs(Math.sin(t * 3.4)) * 0.018;
-        headGroup.rotation.z = Math.sin(t * 3.4) * 0.025;
-        leftArm.shoulderPivot.rotation.set(-0.85 - Math.sin(t * 4.2) * 0.62, 0, 0.12);
-        rightArm.shoulderPivot.rotation.set(-0.85 + Math.sin(t * 4.2) * 0.62, 0, -0.12);
-      } else if (activePose === 'run') {
-        const stride = t * 7.2;
-        characterGroup.position.y = 0.16 + Math.abs(Math.sin(stride)) * 0.065;
-        headGroup.rotation.z = Math.sin(stride * 0.5) * 0.035;
-        leftArm.shoulderPivot.rotation.set(Math.sin(stride) * 0.72 - 0.18, 0, 0.14);
-        rightArm.shoulderPivot.rotation.set(-Math.sin(stride) * 0.72 - 0.18, 0, -0.14);
-        leftLeg.hipPivot.rotation.set(-Math.sin(stride) * 0.6, 0, 0);
-        rightLeg.hipPivot.rotation.set(Math.sin(stride) * 0.6, 0, 0);
-      } else if (activePose === 'yoga') {
-        // ท่าฝึกสมดุลโยคะ ชูแขนประสานเหนือศีรษะและหายใจนุ่มนวล
-        const breath = Math.sin(t * 1.8);
-        characterGroup.position.y = 0.14 + breath * 0.015;
-        headGroup.rotation.z = 0;
-        leftArm.shoulderPivot.rotation.set(0, 0, 2.55 + breath * 0.04);
-        rightArm.shoulderPivot.rotation.set(0, 0, -2.55 - breath * 0.04);
-        rightLeg.hipPivot.rotation.set(-0.25, 0, -0.28);
-      } else if (activePose === 'muay_thai') {
-        const jab = Math.sin(t * 6.5);
-        characterGroup.position.y = 0.15 + Math.abs(jab) * 0.035;
-        headGroup.rotation.z = jab * 0.04;
-        leftArm.shoulderPivot.rotation.set(-1.35 - Math.max(0, jab) * 0.45, 0.2, 0.1);
-        rightArm.shoulderPivot.rotation.set(-1.35 - Math.max(0, -jab) * 0.45, -0.2, -0.1);
-        leftLeg.hipPivot.rotation.set(-0.12, 0, 0.04);
-        rightLeg.hipPivot.rotation.set(0.14, 0, -0.04);
-      } else if (activePose === 'sport') {
-        const bounce = Math.abs(Math.sin(t * 6.0));
-        characterGroup.position.y = 0.14 + bounce * 0.04;
-        rightArm.shoulderPivot.rotation.set(-0.55 - bounce * 0.35, 0, -0.16);
-        leftArm.shoulderPivot.rotation.set(-0.22, 0, 0.18);
-        sportBall.position.set(shoulderX + 0.15, 0.2 + bounce * 0.48, 0.28);
-      }
-
-      const blinkCycle = t % 3.8;
-      const eyeScaleY = blinkCycle > 3.66 ? 0.12 : 1;
-      eyeLeft.scale.y = eyeScaleY;
-      eyeRight.scale.y = eyeScaleY;
-
-      if (!isDragging && autoSpinRef.current && performance.now() > resumeSpinAt) {
-        rotationTargetRef.current += dt * 0.72;
-      }
-
-      turntableGroup.rotation.y +=
-        (rotationTargetRef.current - turntableGroup.rotation.y) * 0.14;
-      currentRotationRef.current = turntableGroup.rotation.y;
+      if (!isDragging && autoSpinRef.current && now > resumeSpinAt) rotationTargetRef.current += dt * 0.6;
+      turntable.rotation.y += (rotationTargetRef.current - turntable.rotation.y) * 0.14;
+      currentRotationRef.current = turntable.rotation.y;
       renderer.render(scene, camera);
     };
-
     animate();
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(animId);
-      domElem.removeEventListener('pointerdown', onPointerDown);
+      dom.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
       window.removeEventListener('resize', handleResize);
+      character?.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [reloadKey]);
 
   const displayOwnerTitle = name?.trim() ? name.trim() : 'หุ่น 3D';
+
+  const canvas = (
+    <div className="relative">
+      <div
+        ref={mountRef}
+        className={`w-full ${compact ? 'h-[220px]' : 'h-[240px]'} touch-pan-y cursor-grab active:cursor-grabbing select-none`}
+        aria-label="ตัวละคร 3 มิติ"
+      />
+      {loadState !== 'ready' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          {loadState === 'loading' ? (
+            <span className="w-8 h-8 rounded-full border-4 border-sage-100 border-t-sage-500 animate-spin" aria-label="กำลังโหลดตัวละคร" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="tactile-btn rounded-full glass-pill px-3 py-1.5 text-xs font-semibold text-ink-900"
+            >
+              โหลดตัวละครไม่สำเร็จ · ลองใหม่
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  if (compact) return canvas;
 
   return (
     <div className="glass-card-mint rounded-3xl p-3.5">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0">
           <div className="flex items-center flex-wrap gap-1.5">
-            <h2 className="text-base font-bold text-ink-900 truncate">
-              {displayOwnerTitle}
-            </h2>
+            <h2 className="text-base font-bold text-ink-900 truncate">{displayOwnerTitle}</h2>
             <span className="rounded-full glass-pill px-2 py-0.5 text-[10px] font-semibold text-ink-900">
               {GENDER_LABEL[gender]}
               {hasValidAge ? ` · ${age} ปี` : ''}
@@ -956,19 +411,13 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
             aria-label={autoSpin ? 'หยุดหมุนอัตโนมัติ' : 'หมุนอัตโนมัติ'}
             className="tactile-btn w-8 h-8 rounded-full glass-pill inline-flex items-center justify-center text-sage-700"
           >
-            {autoSpin ? (
-              <Pause className="w-3.5 h-3.5" />
-            ) : (
-              <Play className="w-3.5 h-3.5" />
-            )}
+            {autoSpin ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
-
           <button
             type="button"
             onClick={() => {
-              const nearestTurn =
-                Math.round(currentRotationRef.current / (Math.PI * 2)) * Math.PI * 2;
-              rotationTargetRef.current = nearestTurn + 0.16;
+              const nearestTurn = Math.round(currentRotationRef.current / (Math.PI * 2)) * Math.PI * 2;
+              rotationTargetRef.current = nearestTurn + 0.35;
               setGoalPreviewMix(0);
             }}
             aria-label="รีเซ็ตมุมมอง 3D"
@@ -980,28 +429,21 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
         </div>
       </div>
 
-      <div
-        ref={mountRef}
-        className="w-full h-[212px] touch-pan-y cursor-grab active:cursor-grabbing select-none"
-        aria-label="โมเดลร่างกาย 3 มิติ"
-      />
+      {canvas}
 
       <div className="grid grid-cols-4 gap-1.5 mt-1.5">
-        {poseButtons.map((btn) => {
-          const active = pose === btn.id;
-          return (
-            <button
-              key={btn.id + btn.label}
-              type="button"
-              onClick={() => setPose(btn.id)}
-              className={`tactile-btn py-1.5 px-1.5 rounded-full text-xs font-semibold truncate ${
-                active ? 'glass-btn-primary' : 'glass-pill text-ink-900'
-              }`}
-            >
-              {btn.label}
-            </button>
-          );
-        })}
+        {poseButtons.map((btn) => (
+          <button
+            key={btn.id + btn.label}
+            type="button"
+            onClick={() => setPose(btn.id)}
+            className={`tactile-btn py-1.5 px-1.5 rounded-full text-xs font-semibold truncate ${
+              pose === btn.id ? 'glass-btn-primary' : 'glass-pill text-ink-900'
+            }`}
+          >
+            {btn.label}
+          </button>
+        ))}
       </div>
 
       {hasRealBodyStats && Math.abs(effectiveWeightKg - effectiveTargetKg) >= 0.5 && (
