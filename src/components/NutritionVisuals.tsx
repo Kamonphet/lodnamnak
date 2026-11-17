@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Apple,
-  Beef,
   Camera,
   Coffee,
   CupSoda,
@@ -15,7 +14,6 @@ import {
   Sun,
   Sunrise,
   Utensils,
-  Wheat,
 } from 'lucide-react';
 import { MealSlotId, PlannedMealItem, PlateSelection } from '../domain/types';
 
@@ -126,28 +124,12 @@ export const MacroPillBar: React.FC<{
 }> = ({ proteinGrams, carbsGrams, fatGrams, isEstimated }) => {
   const prefix = isEstimated ? '~' : '';
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold tabular-data">
-      <span className="inline-flex items-center gap-1 rounded-full bg-peach-50 px-2 py-0.5 text-peach-600">
-        <Beef className="w-3 h-3" />
-        <span>
-          P {prefix}
-          {proteinGrams}g
-        </span>
-      </span>
-      <span className="inline-flex items-center gap-1 rounded-full bg-sunny-50 px-2 py-0.5 text-sunny-600">
-        <Wheat className="w-3 h-3" />
-        <span>
-          C {prefix}
-          {carbsGrams}g
-        </span>
-      </span>
-      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-sky-600">
-        <span>
-          F {prefix}
-          {fatGrams}g
-        </span>
-      </span>
-    </div>
+    <p className="text-xs text-ink-500 tabular-data">
+      P {prefix}
+      {proteinGrams} · C {prefix}
+      {carbsGrams} · F {prefix}
+      {fatGrams} g
+    </p>
   );
 };
 

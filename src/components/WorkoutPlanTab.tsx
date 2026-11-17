@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
 import {
-  Bike,
-  CalendarDays,
   Check,
-  Dumbbell,
-  Flame,
-  Footprints,
-  Heart,
   Plus,
-  Sparkles,
-  Swords,
   Trash2,
 } from 'lucide-react';
 import {
@@ -51,44 +43,6 @@ interface WorkoutPlanTabProps {
   onUpdateWorkoutDays: (days: number) => void;
   onNotify?: (toast: Omit<ToastMessage, 'id'>) => void;
   onRequestConfirm?: (dialog: ConfirmDialogState) => void;
-}
-
-function getExerciseVisual(type: ExerciseType, label?: string) {
-  const text = (label || type).toLowerCase();
-  if (type === 'running' || /วิ่ง|run/.test(text)) {
-    return {
-      icon: <Footprints className="w-4 h-4" />,
-      bg: 'bg-peach-100 text-peach-600',
-    };
-  }
-  if (type === 'cycling' || /จักรยาน|ปั่น|bike|cycle/.test(text)) {
-    return {
-      icon: <Bike className="w-4 h-4" />,
-      bg: 'bg-sky-100 text-sky-600',
-    };
-  }
-  if (type === 'muay_thai' || /มวย|ชก|เตะ/.test(text)) {
-    return {
-      icon: <Swords className="w-4 h-4" />,
-      bg: 'bg-berry-100 text-berry-600',
-    };
-  }
-  if (type === 'yoga' || /โยคะ|ยืด/.test(text)) {
-    return {
-      icon: <Heart className="w-4 h-4" />,
-      bg: 'bg-sage-100 text-sage-600',
-    };
-  }
-  if (type === 'hiit' || /กระโดด|เชือก|hiit/.test(text)) {
-    return {
-      icon: <Sparkles className="w-4 h-4" />,
-      bg: 'bg-sunny-100 text-sunny-600',
-    };
-  }
-  return {
-    icon: <Dumbbell className="w-4 h-4" />,
-    bg: 'bg-sage-100 text-sage-600',
-  };
 }
 
 export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
@@ -206,19 +160,11 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-ink-900">ออกกำลังกาย</h1>
+      <h1 className="text-[22px] font-bold text-ink-900">ออกกำลังกาย</h1>
 
       {/* คำนวณและบันทึกการออกกำลังกาย */}
-      <section className="rounded-3xl glass-card p-4 space-y-4 animate-card-rise stagger-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-peach-600" />
-            <h2 className="text-base font-bold text-ink-900">บันทึกกิจกรรม</h2>
-          </div>
-          <span className="rounded-full glass-alert-warn px-2.5 py-0.5 text-[11px] font-semibold text-peach-800">
-            ค่าประมาณ
-          </span>
-        </div>
+      <section className="rounded-3xl glass-card p-4 space-y-4">
+        <h2 className="text-base font-bold text-ink-900">บันทึกกิจกรรม</h2>
 
         <form onSubmit={handleLogWorkout} className="space-y-3.5">
           <div className="flex flex-wrap gap-1.5">
@@ -233,8 +179,9 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                     setDurationStr(String(EXERCISE_CATALOG[exKey].defaultMinutes));
                     if (exKey === 'custom') selectCustomTitle('', null);
                   }}
-                  className={`tactile-btn py-1.5 px-3 rounded-full text-xs font-semibold ${
-                    active ? 'glass-btn-primary' : 'glass-pill text-ink-900'
+                  aria-pressed={active}
+                  className={`tactile-btn h-8 px-3 rounded-full text-sm ${
+                    active ? 'glass-btn-primary font-semibold' : 'glass-pill text-ink-700'
                   }`}
                 >
                   {EXERCISE_CATALOG[exKey].label}
@@ -249,8 +196,9 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                   key={sport}
                   type="button"
                   onClick={() => selectCustomTitle(sport, findMetActivityByLabel(sport) ?? searchMetActivities(sport, 1)[0] ?? null)}
-                  className={`tactile-btn py-1.5 px-3 rounded-full text-xs font-semibold ${
-                    isCustomSelected ? 'glass-btn-warm' : 'glass-alert-warn text-peach-800'
+                  aria-pressed={isCustomSelected}
+                  className={`tactile-btn h-8 px-3 rounded-full text-sm ${
+                    isCustomSelected ? 'glass-btn-primary font-semibold' : 'glass-pill text-ink-700'
                   }`}
                 >
                   {sport}
@@ -260,7 +208,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
           </div>
 
           {isCustom && (
-            <div className="space-y-2 animate-list-item">
+            <div className="space-y-2">
               <input
                 id="custom-ex-title"
                 type="text"
@@ -273,7 +221,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                 }}
                 placeholder="ชื่อกิจกรรม เช่น เทนนิส, กระโดดเชือก"
                 aria-label="ชื่อกิจกรรม"
-                className="w-full min-h-[44px] rounded-2xl glass-input px-3.5 text-sm text-ink-900"
+                className="w-full h-11 rounded-2xl glass-input px-3.5 text-base text-ink-900"
               />
               {activitySuggestions.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -282,7 +230,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                       key={a.id}
                       type="button"
                       onClick={() => selectCustomTitle(a.label, a)}
-                      className="tactile-btn py-1 px-2.5 rounded-full glass-pill text-[11px] font-semibold text-ink-900"
+                      className="tactile-btn h-7 px-2.5 rounded-full glass-pill text-xs text-ink-700"
                     >
                       {a.label}
                     </button>
@@ -306,7 +254,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                       ? String(calculateBurnFromMet(profile.currentWeightKg, matchedActivity.mets[intensity], durationNum))
                       : 'จากนาฬิกา / เครื่อง'
                   }
-                  className="w-full min-h-[40px] rounded-2xl glass-input px-3 text-sm font-bold text-ink-900 tabular-data"
+                  className="w-full h-11 rounded-2xl glass-input px-3 text-base font-semibold text-ink-900 tabular-data"
                 />
               </div>
             </div>
@@ -325,7 +273,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                 max={240}
                 value={durationStr}
                 onChange={(e) => setDurationStr(e.target.value)}
-                className="w-full min-h-[44px] rounded-2xl glass-input px-3 text-sm font-bold text-ink-900 tabular-data"
+                className="w-full h-11 rounded-2xl glass-input px-3 text-base font-semibold text-ink-900 tabular-data"
               />
             </div>
 
@@ -337,7 +285,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                 id="ex-intensity"
                 value={intensity}
                 onChange={(e) => setIntensity(e.target.value as ExerciseIntensity)}
-                className="w-full min-h-[44px] rounded-2xl glass-input px-2.5 text-xs font-semibold text-ink-900"
+                className="w-full h-11 rounded-2xl glass-input px-2.5 text-sm font-semibold text-ink-900"
               >
                 <option value="light">{INTENSITY_LABELS.light}</option>
                 <option value="moderate">{INTENSITY_LABELS.moderate}</option>
@@ -346,14 +294,18 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
             </div>
           </div>
 
-          <div className="rounded-2xl glass-subtle-active p-3 flex items-center justify-between gap-2">
-            <span className="text-lg font-bold text-sage-700 tabular-data">
-              {previewBurn === null ? '— kcal' : `${manualKcal !== undefined && isCustom ? '' : '~'}${previewBurn} kcal`}
-            </span>
+          <div className="pt-3 border-t border-line flex items-end justify-between gap-2">
+            <div>
+              <span className="block text-sm text-ink-500">เผาผลาญประมาณ</span>
+              <span className="text-[28px] leading-tight font-bold text-ink-900 tabular-data">
+                {previewBurn === null ? '—' : `${manualKcal !== undefined && isCustom ? '' : '~'}${previewBurn}`}
+                <span className="ml-1 text-sm font-semibold text-ink-500">kcal</span>
+              </span>
+            </div>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="tactile-btn min-h-[42px] rounded-2xl glass-btn-primary disabled:opacity-50 px-4 text-xs font-bold inline-flex items-center gap-1.5"
+              className="tactile-btn h-11 rounded-2xl glass-btn-primary disabled:opacity-40 px-4 text-sm font-bold inline-flex items-center gap-1.5"
             >
               {justLogged ? (
                 <Check className="w-4 h-4 animate-confirm-pop" />
@@ -366,58 +318,47 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
         </form>
 
         {todayExercises.length > 0 && (
-          <div className="pt-2 border-t border-line divide-y divide-line">
-            {todayExercises.map((ex) => {
-              const visual = getExerciseVisual(ex.exerciseType, ex.exerciseLabel);
-              return (
-                <div
-                  key={ex.id}
-                  className="py-2.5 flex items-center justify-between gap-2.5 text-xs animate-list-item"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className={`w-7 h-7 rounded-xl inline-flex items-center justify-center shrink-0 ${visual.bg}`}
-                    >
-                      {visual.icon}
-                    </span>
-                    <span className="font-bold text-ink-900 truncate">
-                      {ex.exerciseLabel} · {ex.durationMinutes} นาที ({INTENSITY_LABELS[ex.intensity]})
-                    </span>
+          <div className="pt-1">
+            <h3 className="text-sm font-semibold text-ink-900 mb-1">วันนี้</h3>
+            <ul>
+              {todayExercises.map((ex) => (
+                <li key={ex.id} className="py-2 flex items-start gap-2 border-b border-line last:border-b-0">
+                  <div className="flex-1 min-w-0">
+                    <div className="ledger-row text-sm">
+                      <span className="font-semibold text-ink-900 truncate">{ex.exerciseLabel}</span>
+                      <span className="ledger-fill" aria-hidden="true" />
+                      <span className="tabular-data font-semibold text-ink-900 shrink-0">~{ex.burnedCalories} kcal</span>
+                    </div>
+                    <p className="text-xs text-ink-500 tabular-data">
+                      {ex.durationMinutes} นาที · {INTENSITY_LABELS[ex.intensity]}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="rounded-full bg-peach-100 px-2 py-0.5 font-bold text-peach-600 tabular-data">
-                      ~{ex.burnedCalories} kcal
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => requestDeleteExercise(ex)}
-                      aria-label={`ลบ ${ex.exerciseLabel}`}
-                      className="tactile-btn p-1.5 rounded-xl glass-pill text-ink-500 hover:text-berry-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  <button
+                    type="button"
+                    onClick={() => requestDeleteExercise(ex)}
+                    aria-label={`ลบ ${ex.exerciseLabel}`}
+                    className="tactile-btn -mr-1.5 w-9 h-9 rounded-full inline-flex items-center justify-center text-ink-300 hover:text-berry-600 hover:bg-berry-50 shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </section>
 
       {/* ตารางรายสัปดาห์ */}
-      <section className="rounded-3xl glass-card p-4 space-y-3.5 animate-card-rise stagger-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-sage-600" />
-            <h2 className="text-base font-bold text-ink-900">ตารางรายสัปดาห์</h2>
-          </div>
-          <span className="text-xs font-medium text-ink-700 tabular-data">
+      <section className="rounded-3xl glass-card p-4 space-y-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-base font-bold text-ink-900">ตารางสัปดาห์นี้</h2>
+          <span className="text-sm text-ink-500 tabular-data">
             ~{profile.availableMinutesPerDay} นาที/วัน
           </span>
         </div>
 
-        <div className="flex items-center justify-between gap-2 glass-subtle rounded-2xl px-3 py-2">
-          <span className="text-xs font-semibold text-ink-900">วันออกกำลังกาย/สัปดาห์</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-ink-700">วันต่อสัปดาห์</span>
           <div className="flex gap-1">
             {[2, 3, 4, 5, 6].map((d) => (
               <button
@@ -430,8 +371,9 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                     tone: 'success',
                   });
                 }}
-                className={`tactile-btn w-7 h-7 rounded-xl text-xs font-bold tabular-data ${
-                  activeDaysCount === d ? 'glass-btn-primary' : 'glass-pill text-ink-900'
+                aria-pressed={activeDaysCount === d}
+                className={`tactile-btn w-9 h-9 rounded-full text-sm font-semibold tabular-data ${
+                  activeDaysCount === d ? 'glass-btn-primary' : 'glass-pill text-ink-700'
                 }`}
               >
                 {d}
@@ -448,20 +390,9 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
               <div key={day.dayName} className="py-3 space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-flex items-center justify-center w-8 h-7 rounded-xl text-xs font-bold ${
-                        isDone
-                          ? 'glass-btn-primary'
-                          : isRecovery
-                          ? 'glass-subtle text-ink-700'
-                          : 'glass-subtle-active text-sage-900'
-                      }`}
-                    >
-                      {day.dayShort}
-                    </span>
                     <h3
                       className={`text-sm font-bold ${
-                        isDone ? 'text-sage-700 line-through' : 'text-ink-900'
+                        isDone ? 'text-ink-500 line-through decoration-ink-300' : isRecovery ? 'text-ink-500' : 'text-ink-900'
                       }`}
                     >
                       {day.dayName}
@@ -469,41 +400,28 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-sage-700 tabular-data">
-                      {day.totalMinutes} นาที
-                    </span>
+                    <span className="text-sm text-ink-500 tabular-data">{day.totalMinutes} นาที</span>
                     <button
                       type="button"
                       onClick={() => toggleDayCompleted(day)}
-                      aria-label={`ยืนยัน ${day.dayName}`}
-                      className={`tactile-btn w-7 h-7 rounded-full inline-flex items-center justify-center ${
-                        isDone ? 'glass-btn-primary' : 'glass-pill text-ink-500'
+                      aria-label={`ทำแล้ว ${day.dayName}`}
+                      aria-pressed={isDone}
+                      className={`tactile-btn w-9 h-9 rounded-full inline-flex items-center justify-center ${
+                        isDone ? 'bg-sage-600 text-white' : 'border-[1.5px] border-ink-300 text-transparent hover:text-ink-300'
                       }`}
                     >
-                      <Check
-                        className={`w-3.5 h-3.5 ${isDone ? 'animate-confirm-pop' : ''}`}
-                      />
+                      <Check className="w-4 h-4" strokeWidth={3} />
                     </button>
                   </div>
                 </div>
 
-                <div className="pl-10 space-y-1.5">
-                  {day.sessions.map((sess, i) => {
-                    const visual = getExerciseVisual(sess.exerciseType ?? 'walking', sess.title);
-                    return (
-                      <div key={i} className="flex items-center gap-2 text-xs text-ink-900">
-                        <span
-                          className={`w-6 h-6 rounded-lg inline-flex items-center justify-center shrink-0 ${visual.bg}`}
-                        >
-                          {visual.icon}
-                        </span>
-                        <span className="font-medium truncate">
-                          {sess.title} · {sess.durationMinutes} นาที ({sess.intensityLabel})
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <ul className="space-y-0.5">
+                  {day.sessions.map((sess, i) => (
+                    <li key={i} className="text-sm text-ink-700 truncate">
+                      {sess.title} · <span className="tabular-data">{sess.durationMinutes}</span> นาที · {sess.intensityLabel}
+                    </li>
+                  ))}
+                </ul>
               </div>
             );
           })}

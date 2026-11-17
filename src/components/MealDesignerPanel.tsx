@@ -263,14 +263,17 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
           })}
         </div>
 
-        <div className="rounded-2xl glass-subtle px-3.5 py-2.5 flex items-center justify-between gap-2 text-xs tabular-data">
-          <span className="font-semibold text-ink-900">
-            รวมแผน ~{planSummary.kcal.toLocaleString()} /{' '}
-            {planSummary.targetKcal.toLocaleString()} kcal
-          </span>
-          <span className="font-semibold text-sage-700">
-            P {planSummary.protein}g · C {planSummary.carbs}g · F {planSummary.fat}g
-          </span>
+        <div className="ledger-total pt-2 space-y-0.5">
+          <div className="ledger-row text-sm font-bold text-ink-900">
+            <span>รวมแผน</span>
+            <span className="ledger-fill" aria-hidden="true" />
+            <span className="tabular-data">
+              ~{planSummary.kcal.toLocaleString()} / {planSummary.targetKcal.toLocaleString()} kcal
+            </span>
+          </div>
+          <p className="text-xs text-ink-500 tabular-data text-right">
+            P {planSummary.protein} · C {planSummary.carbs} · F {planSummary.fat} g
+          </p>
         </div>
       </section>
 
@@ -330,7 +333,7 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
                   <p className="text-sm font-bold text-ink-900 leading-snug">
                     {meal.title}
                   </p>
-                  <span className="rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-bold text-sage-700 shrink-0 tabular-data">
+                  <span className="text-sm font-bold text-ink-900 shrink-0 tabular-data">
                     {meal.isVerifiedLabel ? '' : '~'}
                     {meal.calories} kcal
                   </span>
@@ -386,7 +389,7 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
 
             {/* แผงประกอบจานเองรายมื้อ */}
             {isBuilderOpen && (
-              <div className="rounded-2xl glass-card-mint p-3.5 space-y-3 animate-list-item">
+              <div className="rounded-2xl border border-line p-3.5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-ink-900">
                     ประกอบจาน · {slot.slotLabel}

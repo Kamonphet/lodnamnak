@@ -77,8 +77,7 @@
   border-top: 1px solid var(--line);
 }
 
-.glass-card,
-.glass-card-mint {
+.glass-card {
   background: var(--surface);
   border: 1px solid var(--line);
 }
@@ -126,11 +125,6 @@
   background: #385B3A;
 }
 
-.glass-btn-warm {
-  background: #AE5D1E;
-  color: #FFFFFF;
-}
-
 .glass-btn-danger {
   background: #AE4334;
   color: #FFFFFF;
@@ -154,27 +148,6 @@
 
 .glass-modal-backdrop {
   background: rgba(42, 34, 27, 0.38);
-}
-
-.glass-water-card {
-  background: #EEF3F6;
-  border: 1px solid #D8E4EC;
-}
-
-.glass-badge-easy {
-  background: #EEF3EB;
-}
-
-.glass-badge-medium {
-  background: #EEF3F6;
-}
-
-.glass-badge-hard {
-  background: #FCF2E7;
-}
-
-.glass-badge-legend {
-  background: #FAF4E2;
 }
 
 /* พื้นทึบของหน้าต่างเต็มจอ (ตั้งค่า / ถ่ายฉลาก) */
@@ -296,37 +269,6 @@
 
 .animate-confirm-pop {
   animation: fadeIn 160ms ease-out both;
-}
-
-/* ระดับน้ำในแก้ว: เคลื่อนช้า ๆ อย่างเดียว ไม่มีฟอง */
-@keyframes waterWaveSlide {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-water-wave {
-  animation: waterWaveSlide 4s linear infinite;
-}
-
-.animate-water-wave-slow {
-  animation: waterWaveSlide 6s linear infinite reverse;
-}
-
-.animate-water-bubble-1,
-.animate-water-bubble-2,
-.animate-water-bubble-3 {
-  display: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-water-wave,
-  .animate-water-wave-slow {
-    animation: none !important;
-  }
 }
 
 /* ค่าการแสดงผลจากหน้าตั้งค่า */

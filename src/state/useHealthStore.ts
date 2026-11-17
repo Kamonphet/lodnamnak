@@ -680,16 +680,19 @@ export function useHealthStore() {
   );
 
   const dailyTotals = useMemo(() => {
-    const consumedCalories = todayFoods.reduce((sum, item) => sum + item.calories, 0);
-    const consumedProtein = todayFoods.reduce((sum, item) => sum + item.proteinGrams, 0);
-    const consumedCarbs = todayFoods.reduce((sum, item) => sum + item.carbsGrams, 0);
-    const consumedFat = todayFoods.reduce((sum, item) => sum + item.fatGrams, 0);
+    // ผลรวมทศนิยมของ float (เช่น 23.799999999999997) ปัดเหลือ 1 ตำแหน่ง
+    const sum1 = (pick: (f: (typeof todayFoods)[number]) => number) =>
+      Math.round(todayFoods.reduce((sum, item) => sum + pick(item), 0) * 10) / 10;
+    const consumedCalories = Math.round(todayFoods.reduce((sum, item) => sum + item.calories, 0));
+    const consumedProtein = sum1((f) => f.proteinGrams);
+    const consumedCarbs = sum1((f) => f.carbsGrams);
+    const consumedFat = sum1((f) => f.fatGrams);
     const burnedCalories = todayExercises.reduce((sum, item) => sum + item.burnedCalories, 0);
 
     const targetCalories = metrics?.recommendedDailyCalories ?? 2000;
     const remainingCalories = targetCalories - consumedCalories;
     const targetProtein = metrics?.targetProteinGrams ?? 100;
-    const remainingProtein = Math.max(0, targetProtein - consumedProtein);
+    const remainingProtein = Math.max(0, Math.round((targetProtein - consumedProtein) * 10) / 10);
 
     return {
       targetCalories,

@@ -97,29 +97,11 @@ export const App: React.FC = () => {
       return;
     }
 
-    if (!store.appSettings.celebrationToasts) {
-      // ปิดข้อความฉลองไว้ในตั้งค่า
-    } else if (g.level > prev.level) {
-      pushToast({
-        title: `เลเวลอัปเป็น Lv.${g.level}!`,
-        detail: g.rankTitle,
-        tone: 'success',
-      });
-    } else {
-      const newlyCompleted = g.quests.filter(
-        (q) => q.completed && !prev.completedQuestIds.includes(q.id)
-      );
-      if (newlyCompleted.length > 0) {
-        const first = newlyCompleted[0];
-        pushToast({
-          title: g.allQuestsCompletedToday
-            ? 'เคลียร์ครบทุกภารกิจวันนี้!'
-            : `ภารกิจสำเร็จ +${first.xpReward} XP`,
-          detail: g.allQuestsCompletedToday
-            ? `${first.title} · โบนัสครบทุกข้อ +20 XP`
-            : first.title,
-          tone: 'success',
-        });
+    // แจ้งครั้งเดียวเมื่อทำครบทุกข้อของวัน (ไม่มีเลเวล/XP แล้ว)
+    if (store.appSettings.celebrationToasts) {
+      const newlyCompleted = g.quests.some((q) => q.completed && !prev.completedQuestIds.includes(q.id));
+      if (newlyCompleted && g.allQuestsCompletedToday) {
+        pushToast({ title: 'ทำครบทุกข้อของวันนี้แล้ว', tone: 'success' });
       }
     }
 

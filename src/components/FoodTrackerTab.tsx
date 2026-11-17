@@ -3,8 +3,6 @@ import {
   AlertTriangle,
   Camera,
   Check,
-  ChefHat,
-  Lightbulb,
   Loader2,
   Plus,
   SlidersHorizontal,
@@ -36,7 +34,6 @@ import { NutritionLabelScannerModal } from './NutritionLabelScannerModal';
 import { ConfirmDialogState } from './ConfirmDialog';
 import { ToastMessage } from './LiquidToast';
 import { MealDesignerPanel } from './MealDesignerPanel';
-import { FoodCategoryThumbnail, MacroPillBar } from './NutritionVisuals';
 
 interface FoodTrackerTabProps {
   profile: UserProfile;
@@ -337,93 +334,63 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-ink-900">อาหารวันนี้</h1>
+      <h1 className="text-[22px] font-bold text-ink-900">อาหาร</h1>
 
-      {/* สรุปแคลอรีและสารอาหารหลักวันนี้ */}
-      <section className="rounded-3xl glass-card p-4 space-y-3 animate-card-rise stagger-1">
-        <div className="flex items-center justify-between text-sm tabular-data">
-          <span className="text-ink-700">
-            เป้าหมาย{' '}
-            <strong className="text-ink-900">
-              {dailyTotals.targetCalories.toLocaleString()} kcal
-            </strong>
-          </span>
-          <span className={isOver ? 'text-peach-800 font-bold' : 'text-sage-700 font-bold'}>
-            {isOver
-              ? `เกิน ${Math.abs(dailyTotals.remainingCalories).toLocaleString()} kcal`
-              : `เหลือ ${dailyTotals.remainingCalories.toLocaleString()} kcal`}
+      {/* สรุปวันนี้: เหลือกี่ kcal + สารอาหารหลักแบบแถวบัญชี */}
+      <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="food-summary-title">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 id="food-summary-title" className="text-sm font-semibold text-ink-500">
+            {isOver ? 'เกินงบวันนี้' : 'เหลือกินได้วันนี้'}
+          </h2>
+          <span className="text-sm text-ink-500 tabular-data">
+            {dailyTotals.consumedCalories.toLocaleString()} / {dailyTotals.targetCalories.toLocaleString()} kcal
           </span>
         </div>
-
-        <div className="grid grid-cols-4 gap-2 text-center tabular-data pt-1">
-          <div className="rounded-2xl glass-subtle p-2">
-            <span className="block text-[11px] font-semibold text-ink-700">กินแล้ว</span>
-            <span className="block text-sm font-bold text-sage-600">
-              {dailyTotals.consumedCalories.toLocaleString()}
-            </span>
-            <span className="block text-[10px] text-ink-700">kcal</span>
-          </div>
-          <div className="rounded-2xl glass-badge-hard p-2">
-            <span className="block text-[11px] font-semibold text-peach-800">โปรตีน</span>
-            <span className="block text-sm font-bold text-peach-600">
-              {dailyTotals.consumedProtein}/{dailyTotals.targetProtein}
-            </span>
-            <span className="block text-[10px] text-peach-800">g</span>
-          </div>
-          <div className="rounded-2xl glass-badge-legend p-2">
-            <span className="block text-[11px] font-semibold text-sunny-800">คาร์บ</span>
-            <span className="block text-sm font-bold text-sunny-600">
-              {dailyTotals.consumedCarbs}/{targetCarbsGrams}
-            </span>
-            <span className="block text-[10px] text-sunny-800">g</span>
-          </div>
-          <div className="rounded-2xl glass-badge-medium p-2">
-            <span className="block text-[11px] font-semibold text-sky-800">ไขมัน</span>
-            <span className="block text-sm font-bold text-sky-600">
-              {dailyTotals.consumedFat}/{targetFatGrams}
-            </span>
-            <span className="block text-[10px] text-sky-800">g</span>
-          </div>
+        <p className={`text-[32px] leading-none font-bold tabular-data ${isOver ? 'text-peach-600' : 'text-ink-900'}`}>
+          {Math.abs(dailyTotals.remainingCalories).toLocaleString()}
+          <span className="ml-1.5 text-base font-semibold text-ink-500">kcal</span>
+        </p>
+        <div className="space-y-2 pt-1">
+          {[
+            { label: 'โปรตีน', value: dailyTotals.consumedProtein, target: dailyTotals.targetProtein, bar: 'bg-peach-500' },
+            { label: 'คาร์บ', value: dailyTotals.consumedCarbs, target: targetCarbsGrams, bar: 'bg-sunny-500' },
+            { label: 'ไขมัน', value: dailyTotals.consumedFat, target: targetFatGrams, bar: 'bg-sky-500' },
+          ].map((m) => (
+            <div key={m.label} className="space-y-1">
+              <div className="ledger-row text-sm text-ink-700">
+                <span>{m.label}</span>
+                <span className="ledger-fill" aria-hidden="true" />
+                <span className="tabular-data">
+                  <strong className="text-ink-900">{m.value}</strong> / {m.target} g
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
+                <div
+                  className={`h-full rounded-full ${m.bar}`}
+                  style={{ width: `${Math.min(100, Math.round((m.value / Math.max(1, m.target)) * 100))}%` }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* สลับโหมดบันทึกที่กิน & ออกแบบแต่ละมื้อ */}
-      <div className="rounded-2xl glass-dock p-1.5 animate-card-rise stagger-2">
-        <div className="relative grid grid-cols-2">
-          <div
-            aria-hidden="true"
-            className="absolute inset-y-0 left-0 w-1/2 rounded-xl glass-dock-indicator pointer-events-none"
-            style={{
-              transform: `translateX(${subView === 'log' ? 0 : 100}%)`,
-            }}
-          />
+      <div role="tablist" aria-label="โหมดหน้าอาหาร" className="grid grid-cols-2 gap-1 p-1 rounded-full bg-cream-200">
+        {([
+          ['log', 'บันทึกที่กิน'],
+          ['designer', 'วางแผนมื้อ'],
+        ] as const).map(([id, label]) => (
           <button
+            key={id}
             type="button"
-            onClick={() => setSubView('log')}
-            className={`relative z-10 tactile-btn min-h-[40px] rounded-xl inline-flex items-center justify-center gap-1.5 text-xs font-bold ${
-              subView === 'log' ? 'text-sage-900' : 'text-ink-700'
-            }`}
+            role="tab"
+            aria-selected={subView === id}
+            onClick={() => setSubView(id)}
+            className={`h-9 rounded-full text-sm font-semibold transition-colors ${subView === id ? 'bg-cream-50 text-ink-900 shadow-[0_1px_2px_rgba(42,34,27,0.12)]' : 'text-ink-500'}`}
           >
-            <Utensils className="w-3.5 h-3.5 text-sage-600" />
-            <span>บันทึกที่กิน</span>
-            {todayFoods.length > 0 && (
-              <span className="rounded-full bg-sage-600/15 text-sage-700 px-1.5 py-0.2 text-[10px] font-bold tabular-data">
-                {todayFoods.length}
-              </span>
-            )}
+            {label}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setSubView('designer')}
-            className={`relative z-10 tactile-btn min-h-[40px] rounded-xl inline-flex items-center justify-center gap-1.5 text-xs font-bold ${
-              subView === 'designer' ? 'text-sage-900' : 'text-ink-700'
-            }`}
-          >
-            <ChefHat className="w-3.5 h-3.5 text-sage-600" />
-            <span>ออกแบบแต่ละมื้อ</span>
-          </button>
-        </div>
+        ))}
       </div>
 
       {subView === 'designer' ? (
@@ -446,26 +413,23 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
       ) : (
         <div key="log" className="space-y-4 animate-page-left">
           {/* เพิ่มรายการอาหาร */}
-          <section className="rounded-3xl glass-card p-4 space-y-3.5 animate-card-rise stagger-2">
+          <section className="rounded-3xl glass-card p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Utensils className="w-4 h-4 text-sage-600" />
-                <h2 className="text-base font-bold text-ink-900">เพิ่มมื้ออาหาร</h2>
-              </div>
+              <h2 className="text-base font-bold text-ink-900">เพิ่มอาหาร</h2>
 
               <button
                 type="button"
                 onClick={() =>
                   setMode((m) => (m === 'natural' ? 'manual' : 'natural'))
                 }
-                className="tactile-btn inline-flex items-center gap-1 rounded-full glass-pill px-3 py-1.5 text-xs font-semibold text-ink-900"
+                className="tactile-btn h-8 inline-flex items-center gap-1 rounded-full px-2.5 text-sm font-semibold text-sage-700 hover:bg-sage-50"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-sage-600" />
-                <span>{mode === 'natural' ? 'กรอกฉลากเอง' : 'พิมพ์ชื่อเมนู'}</span>
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>{mode === 'natural' ? 'กรอกตัวเลขเอง' : 'ค้นหาเมนู'}</span>
               </button>
             </div>
 
-            <div key={mode} className="space-y-3 animate-list-item">
+            <div key={mode} className="space-y-3">
               {mode === 'natural' ? (
                 <>
                   <form onSubmit={handleFoodSubmit} className="flex gap-1.5">
@@ -475,21 +439,20 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                       onChange={(e) => setFoodInput(e.target.value)}
                       placeholder="ชื่อเมนู / สินค้า เช่น สุกี้น้ำไก่"
                       aria-label="ชื่ออาหารหรือค้นหาสินค้า"
-                      className="flex-1 min-w-0 min-h-[46px] rounded-2xl glass-input px-3.5 text-sm text-ink-900"
+                      className="flex-1 min-w-0 h-11 rounded-2xl glass-input px-3.5 text-base text-ink-900"
                     />
                     <button
                       type="button"
                       onClick={() => setScannerOpen(true)}
                       aria-label="ถ่ายภาพฉลากโภชนาการ"
-                      className="tactile-btn min-h-[46px] rounded-2xl glass-pill px-3 text-xs font-bold text-ink-900 inline-flex items-center gap-1.5 shrink-0"
+                      className="tactile-btn h-11 w-11 rounded-2xl glass-pill text-ink-700 inline-flex items-center justify-center shrink-0"
                     >
-                      <Camera className="w-4 h-4 text-sage-600" />
-                      <span>ถ่ายฉลาก</span>
+                      <Camera className="w-5 h-5" />
                     </button>
                     <button
                       type="submit"
                       disabled={!foodInput.trim()}
-                      className="tactile-btn min-h-[46px] rounded-2xl glass-btn-primary disabled:opacity-50 px-3.5 text-sm font-bold inline-flex items-center gap-1 shrink-0"
+                      className="tactile-btn h-11 rounded-2xl glass-btn-primary disabled:opacity-40 px-3.5 text-sm font-bold inline-flex items-center gap-1 shrink-0"
                     >
                       {justAdded ? (
                         <Check className="w-4 h-4 animate-confirm-pop" />
@@ -517,7 +480,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
 
                   {/* เมนูจากฐานข้อมูล Thai FCD */}
                   {dbMatches.length > 0 && (
-                    <div className="rounded-2xl glass-card-mint p-3 space-y-2 animate-list-item">
+                    <div className="rounded-2xl glass-subtle p-3 space-y-2">
                       <span className="text-[11px] font-bold text-ink-900 inline-flex items-center gap-1.5">
                         <Utensils className="w-3.5 h-3.5 text-sage-600" />
                         เมนูในฐานข้อมูล
@@ -526,7 +489,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                         {dbMatches.map((food) => {
                           const mult = dbMultipliers[food.id] ?? 1;
                           return (
-                            <div key={food.id} className="rounded-xl glass-subtle p-2.5 space-y-1.5">
+                            <div key={food.id} className="rounded-xl bg-cream-50 border border-line p-2.5 space-y-1.5">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
                                   <span className="text-xs font-bold text-ink-900 block">{food.name}</span>
@@ -573,7 +536,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
 
                   {/* ผลลัพธ์ฉลากจริงจาก Open Food Facts เฉพาะตอนพิมพ์ค้นหา */}
                   {(isOffSearching || offMatches.length > 0) && (
-                    <div className="rounded-2xl glass-card-mint p-3 space-y-2 animate-list-item">
+                    <div className="rounded-2xl glass-subtle p-3 space-y-2">
                       <div className="flex items-center justify-between text-[11px] font-bold text-ink-900">
                         <span className="inline-flex items-center gap-1.5">
                           <Camera className="w-3.5 h-3.5 text-sage-600" />
@@ -605,7 +568,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                             return (
                               <div
                                 key={`${item.code}-${item.name}`}
-                                className="rounded-xl glass-subtle p-2.5 space-y-1.5"
+                                className="rounded-xl bg-cream-50 border border-line p-2.5 space-y-1.5"
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
@@ -711,9 +674,9 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                         key={chip}
                         type="button"
                         onClick={() => logFoodWithToast(chip)}
-                        className="tactile-btn rounded-full glass-pill px-3 py-1.5 text-xs font-medium text-ink-900"
+                        className="tactile-btn h-8 rounded-full glass-pill px-3 text-sm text-ink-700"
                       >
-                        + {chip}
+                        {chip}
                       </button>
                     ))}
                   </div>
@@ -806,70 +769,58 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
         </div>
       </section>
 
-      {/* รายการอาหารวันนี้ */}
-      <section className="rounded-3xl glass-card p-4 space-y-3 animate-card-rise stagger-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-ink-900">รายการที่กิน</h2>
-          <span className="text-xs text-ink-700 tabular-data">
-            {todayFoods.length} รายการ
-          </span>
+      {/* รายการอาหารวันนี้ แบบแถวบัญชี */}
+      <section className="rounded-3xl glass-card p-4" aria-labelledby="food-list-title">
+        <div className="flex items-baseline justify-between mb-1">
+          <h2 id="food-list-title" className="text-base font-bold text-ink-900">ที่กินวันนี้</h2>
+          <span className="text-sm text-ink-500 tabular-data">{todayFoods.length} รายการ</span>
         </div>
 
         {todayFoods.length === 0 ? (
-          <p className="text-sm text-ink-700 py-4 text-center">ยังไม่มีรายการวันนี้</p>
+          <p className="text-sm text-ink-500 py-6 text-center">ยังไม่ได้บันทึก</p>
         ) : (
-          <div className="divide-y divide-line">
-            {todayFoods.map((item) => (
-              <div
-                key={item.id}
-                className="py-3 flex items-center justify-between gap-2.5 animate-list-item"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <FoodCategoryThumbnail
-                    name={item.normalizedName}
-                    isVerifiedLabel={
-                      !item.isEstimated && item.portionNote.includes('ฉลากจริง')
-                    }
-                  />
-                  <div className="min-w-0 space-y-1">
-                    <h3 className="text-sm font-bold text-ink-900 truncate">
-                      {item.normalizedName}
-                    </h3>
-                    <p className="text-xs text-ink-700 truncate">{item.portionNote}</p>
-                    <MacroPillBar
-                      proteinGrams={item.proteinGrams}
-                      carbsGrams={item.carbsGrams}
-                      fatGrams={item.fatGrams}
-                      isEstimated={item.isEstimated}
-                    />
+          <>
+            <ul>
+              {todayFoods.map((item) => (
+                <li key={item.id} className="py-2.5 flex items-start gap-2 border-b border-line last:border-b-0">
+                  <div className="flex-1 min-w-0">
+                    <div className="ledger-row text-sm">
+                      <span className="font-semibold text-ink-900 truncate">{item.normalizedName}</span>
+                      <span className="ledger-fill" aria-hidden="true" />
+                      <span className="tabular-data font-semibold text-ink-900 shrink-0">
+                        {item.isEstimated ? '~' : ''}
+                        {item.calories}
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink-500 truncate tabular-data">
+                      {item.portionNote} · P {item.proteinGrams} · C {item.carbsGrams} · F {item.fatGrams} g
+                    </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="rounded-full bg-sage-100 px-2.5 py-0.5 text-xs font-bold text-sage-700 tabular-data">
-                    {item.isEstimated ? '~' : ''}
-                    {item.calories} kcal
-                  </span>
                   <button
                     type="button"
                     onClick={() => requestDeleteFood(item)}
                     aria-label={`ลบ ${item.normalizedName}`}
-                    className="tactile-btn p-2 rounded-xl glass-pill text-ink-500 hover:text-berry-600"
+                    className="tactile-btn -mr-1.5 w-9 h-9 rounded-full inline-flex items-center justify-center text-ink-300 hover:text-berry-600 hover:bg-berry-50 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                </div>
+                </li>
+              ))}
+            </ul>
+            <div className="ledger-total mt-1 pt-2 pr-8">
+              <div className="ledger-row text-sm font-bold text-ink-900">
+                <span>รวม</span>
+                <span className="ledger-fill" aria-hidden="true" />
+                <span className="tabular-data">{dailyTotals.consumedCalories.toLocaleString()} kcal</span>
               </div>
-            ))}
-          </div>
+            </div>
+          </>
         )}
       </section>
 
       {/* วิเคราะห์พฤติกรรมการกินประจำ */}
-      <section className="rounded-3xl glass-card p-4 space-y-3.5 animate-card-rise stagger-4">
-        <div className="flex items-center gap-2">
-          <Lightbulb className="w-4 h-4 text-peach-600" />
-          <h2 className="text-base font-bold text-ink-900">วิเคราะห์เมนูที่กินประจำ</h2>
-        </div>
+      <section className="rounded-3xl glass-card p-4 space-y-3">
+        <h2 className="text-base font-bold text-ink-900">เมนูที่กินประจำ</h2>
 
         <form onSubmit={handleHabitSubmit} className="flex gap-2">
           <input
@@ -878,12 +829,12 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
             onChange={(e) => setHabitInput(e.target.value)}
             placeholder="เช่น กินกะเพราไข่ดาวทุกเที่ยง, ดื่มชาเย็นทุกบ่าย"
             aria-label="เมนูที่กินประจำ"
-            className="flex-1 min-h-[44px] rounded-2xl glass-input px-3.5 text-sm text-ink-900"
+            className="flex-1 min-w-0 h-11 rounded-2xl glass-input px-3.5 text-base text-ink-900"
           />
           <button
             type="submit"
             disabled={!habitInput.trim()}
-            className="tactile-btn min-h-[44px] rounded-2xl glass-btn-warm disabled:opacity-50 px-3.5 text-xs font-bold shrink-0"
+            className="tactile-btn h-11 rounded-2xl glass-pill disabled:opacity-40 px-3.5 text-sm font-bold text-ink-900 shrink-0"
           >
             วิเคราะห์
           </button>
@@ -892,13 +843,13 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
         {habitAnalyses.length > 0 && (
           <div
             key={`${habitAnalyses.length}-${habitAnalyses[0].detectedDish}`}
-            className="rounded-2xl glass-subtle p-3.5 space-y-2.5 text-xs leading-relaxed animate-list-item"
+            className="rounded-2xl glass-subtle p-3.5 space-y-2.5 text-sm leading-relaxed"
           >
             <h3 className="text-sm font-bold text-ink-900">
               {habitAnalyses[0].detectedDish}
             </h3>
             <div>
-              <strong className="text-sage-700 block mb-0.5">ข้อดี:</strong>
+              <strong className="text-sage-700 block mb-0.5">ข้อดี</strong>
               <ul className="list-disc pl-4 space-y-0.5 text-ink-700">
                 {habitAnalyses[0].pros.map((p, idx) => (
                   <li key={idx}>{p}</li>
@@ -906,7 +857,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
               </ul>
             </div>
             <div>
-              <strong className="text-peach-800 block mb-0.5">ข้อสังเกต:</strong>
+              <strong className="text-peach-600 block mb-0.5">ข้อสังเกต</strong>
               <ul className="list-disc pl-4 space-y-0.5 text-ink-700">
                 {habitAnalyses[0].watchOuts.map((w, idx) => (
                   <li key={idx}>{w}</li>
@@ -914,7 +865,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
               </ul>
             </div>
             <div>
-              <strong className="text-ink-900 block mb-0.5">แนวทางปรับเล็กน้อย:</strong>
+              <strong className="text-ink-900 block mb-0.5">ปรับเล็กน้อย</strong>
               <ul className="list-disc pl-4 space-y-0.5 text-ink-700">
                 {habitAnalyses[0].microTweaks.map((m, idx) => (
                   <li key={idx}>{m}</li>

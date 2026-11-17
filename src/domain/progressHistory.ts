@@ -165,10 +165,11 @@ export function calculateProgressSummary(
     const dayFoods = foodLogs.filter((f) => f.dateKey === dateKey);
     const dayExercises = exerciseLogs.filter((e) => e.dateKey === dateKey);
 
-    const consumedCalories = dayFoods.reduce((s, f) => s + f.calories, 0);
-    const proteinGrams = dayFoods.reduce((s, f) => s + f.proteinGrams, 0);
-    const carbsGrams = dayFoods.reduce((s, f) => s + f.carbsGrams, 0);
-    const fatGrams = dayFoods.reduce((s, f) => s + f.fatGrams, 0);
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+    const consumedCalories = Math.round(dayFoods.reduce((s, f) => s + f.calories, 0));
+    const proteinGrams = round1(dayFoods.reduce((s, f) => s + f.proteinGrams, 0));
+    const carbsGrams = round1(dayFoods.reduce((s, f) => s + f.carbsGrams, 0));
+    const fatGrams = round1(dayFoods.reduce((s, f) => s + f.fatGrams, 0));
     const burnedCalories = dayExercises.reduce((s, e) => s + e.burnedCalories, 0);
     const waterGlasses = Math.min(20, Math.round(waterLogs[dateKey] ?? 0));
 
