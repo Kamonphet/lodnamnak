@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import {
+  CalendarCheck,
   Check,
+  Clock,
+  Flame,
+  Moon,
   Plus,
   Trash2,
 } from 'lucide-react';
@@ -25,6 +29,11 @@ import {
 } from '../domain/types';
 import { ConfirmDialogState } from './ConfirmDialog';
 import { ToastMessage } from './LiquidToast';
+import { exerciseIcon, IntensityBars } from './exerciseVisuals';
+import { DayDots } from './DayDots';
+
+const DAY_NAMES_BY_JS_DAY = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+const INTENSITIES: ExerciseIntensity[] = ['light', 'moderate', 'vigorous'];
 
 interface WorkoutPlanTabProps {
   profile: UserProfile;
@@ -68,6 +77,8 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
   const [pickedActivity, setPickedActivity] = useState<MetActivity | null>(null);
   const [manualKcalStr, setManualKcalStr] = useState('');
   const checkedDays = completedDays ?? {};
+  const todayName = DAY_NAMES_BY_JS_DAY[new Date().getDay()];
+  const [viewDay, setViewDay] = useState<string>(todayName);
 
   const isCustom = selectedType === 'custom';
   const durationNum = Math.max(5, Math.min(240, Number(durationStr) || 30));
@@ -164,7 +175,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
 
       {/* คำนวณและบันทึกการออกกำลังกาย */}
       <section className="rounded-3xl glass-card p-4 space-y-4">
-        <h2 className="text-base font-bold text-ink-900">บันทึกกิจกรรม</h2>
+        <h2 className="sr-only">บันทึกกิจกรรม</h2>
 
         <form onSubmit={handleLogWorkout} className="space-y-3.5">
           <div className="flex flex-wrap gap-1.5">
@@ -180,10 +191,14 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                     if (exKey === 'custom') selectCustomTitle('', null);
                   }}
                   aria-pressed={active}
-                  className={`tactile-btn h-8 px-3 rounded-full text-sm ${
+                  className={`tactile-btn h-8 pl-2.5 pr-3 rounded-full text-sm inline-flex items-center gap-1.5 ${
                     active ? 'glass-btn-primary font-semibold' : 'glass-pill text-ink-700'
                   }`}
                 >
+                  {(() => {
+                    const Icon = exerciseIcon(exKey);
+                    return <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />;
+                  })()}
                   {EXERCISE_CATALOG[exKey].label}
                 </button>
               );
@@ -260,11 +275,9 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2.5">
-            <div>
-              <label htmlFor="ex-mins" className="block text-xs font-semibold text-ink-700 mb-1">
-                เวลา (นาที)
-              </label>
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex-1">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-500 pointer-events-none" aria-hidden="true" />
               <input
                 id="ex-mins"
                 type="number"
@@ -273,35 +286,39 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                 max={240}
                 value={durationStr}
                 onChange={(e) => setDurationStr(e.target.value)}
-                className="w-full h-11 rounded-2xl glass-input px-3 text-base font-semibold text-ink-900 tabular-data"
+                aria-label="เวลา (นาที)"
+                className="w-full h-11 rounded-2xl glass-input pl-9 pr-12 text-base font-semibold text-ink-900 tabular-data"
               />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-ink-500 pointer-events-none">นาที</span>
             </div>
 
-            <div>
-              <label htmlFor="ex-intensity" className="block text-xs font-semibold text-ink-700 mb-1">
-                ความหนัก
-              </label>
-              <select
-                id="ex-intensity"
-                value={intensity}
-                onChange={(e) => setIntensity(e.target.value as ExerciseIntensity)}
-                className="w-full h-11 rounded-2xl glass-input px-2.5 text-sm font-semibold text-ink-900"
-              >
-                <option value="light">{INTENSITY_LABELS.light}</option>
-                <option value="moderate">{INTENSITY_LABELS.moderate}</option>
-                <option value="vigorous">{INTENSITY_LABELS.vigorous}</option>
-              </select>
+            <div role="radiogroup" aria-label="ความหนัก" className="flex p-1 rounded-full bg-cream-200 shrink-0">
+              {INTENSITIES.map((lv) => (
+                <button
+                  key={lv}
+                  type="button"
+                  role="radio"
+                  aria-checked={intensity === lv}
+                  aria-label={INTENSITY_LABELS[lv]}
+                  onClick={() => setIntensity(lv)}
+                  className={`tactile-btn w-10 h-9 rounded-full inline-flex items-center justify-center transition-colors ${
+                    intensity === lv ? 'bg-cream-50 text-peach-600 shadow-[0_1px_2px_rgba(42,34,27,0.12)]' : 'text-ink-500'
+                  }`}
+                >
+                  <IntensityBars level={lv} />
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="pt-3 border-t border-line flex items-end justify-between gap-2">
-            <div>
-              <span className="block text-sm text-ink-500">เผาผลาญประมาณ</span>
+          <div className="pt-3 border-t border-line flex items-center justify-between gap-2">
+            <p className="inline-flex items-center gap-1.5" aria-label={`เผาผลาญประมาณ ${previewBurn ?? '-'} kcal`}>
+              <Flame className="w-6 h-6 text-peach-500" aria-hidden="true" />
               <span className="text-[28px] leading-tight font-bold text-ink-900 tabular-data">
                 {previewBurn === null ? '—' : `${manualKcal !== undefined && isCustom ? '' : '~'}${previewBurn}`}
                 <span className="ml-1 text-sm font-semibold text-ink-500">kcal</span>
               </span>
-            </div>
+            </p>
             <button
               type="submit"
               disabled={!canSubmit}
@@ -319,18 +336,30 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
 
         {todayExercises.length > 0 && (
           <div className="pt-1">
-            <h3 className="text-sm font-semibold text-ink-900 mb-1">วันนี้</h3>
+            <h3 className="text-sm font-semibold text-ink-500 mb-1">วันนี้</h3>
             <ul>
               {todayExercises.map((ex) => (
-                <li key={ex.id} className="animate-row-in py-2 flex items-start gap-2 border-b border-line last:border-b-0">
+                <li key={ex.id} className="animate-row-in py-2 flex items-center gap-2.5 border-b border-line last:border-b-0">
+                  {(() => {
+                    const Icon = exerciseIcon(ex.exerciseType);
+                    return (
+                      <span className="w-8 h-8 rounded-full bg-sage-50 text-sage-700 inline-flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4" aria-hidden="true" />
+                      </span>
+                    );
+                  })()}
                   <div className="flex-1 min-w-0">
                     <div className="ledger-row text-sm">
                       <span className="font-semibold text-ink-900 truncate">{ex.exerciseLabel}</span>
                       <span className="ledger-fill" aria-hidden="true" />
                       <span className="tabular-data font-semibold text-ink-900 shrink-0">~{ex.burnedCalories} kcal</span>
                     </div>
-                    <p className="text-xs text-ink-500 tabular-data">
-                      {ex.durationMinutes} นาที · {INTENSITY_LABELS[ex.intensity]}
+                    <p className="flex items-center gap-2 text-xs text-ink-500 tabular-data">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                        {ex.durationMinutes} นาที
+                      </span>
+                      <IntensityBars level={ex.intensity} className="text-peach-500" />
                     </p>
                   </div>
                   <button
@@ -350,16 +379,10 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
 
       {/* ตารางรายสัปดาห์ */}
       <section className="rounded-3xl glass-card p-4 space-y-3">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-base font-bold text-ink-900">ตารางสัปดาห์นี้</h2>
-          <span className="text-sm text-ink-500 tabular-data">
-            ~{profile.availableMinutesPerDay} นาที/วัน
-          </span>
-        </div>
-
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm text-ink-700">วันต่อสัปดาห์</span>
-          <div className="flex gap-1">
+          <h2 className="text-base font-bold text-ink-900">สัปดาห์นี้</h2>
+          <div className="flex items-center gap-1" role="group" aria-label="วันออกกำลังกายต่อสัปดาห์">
+            <CalendarCheck className="w-4 h-4 text-ink-500 mr-0.5" aria-hidden="true" />
             {[2, 3, 4, 5, 6].map((d) => (
               <button
                 key={d}
@@ -372,8 +395,9 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
                   });
                 }}
                 aria-pressed={activeDaysCount === d}
-                className={`tactile-btn w-9 h-9 rounded-full text-sm font-semibold tabular-data ${
-                  activeDaysCount === d ? 'glass-btn-primary' : 'glass-pill text-ink-700'
+                aria-label={`${d} วันต่อสัปดาห์`}
+                className={`tactile-btn w-8 h-8 rounded-full text-sm font-semibold tabular-data ${
+                  activeDaysCount === d ? 'glass-btn-primary' : 'text-ink-700 hover:bg-cream-200'
                 }`}
               >
                 {d}
@@ -382,50 +406,69 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
           </div>
         </div>
 
-        <div className="divide-y divide-line">
-          {weeklySchedule.map((day) => {
-            const isRecovery = day.focusType === 'recovery';
-            const isDone = Boolean(checkedDays[day.dayName]);
-            return (
-              <div key={day.dayName} className="py-3 space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <h3
-                      className={`text-sm font-bold ${
-                        isDone ? 'text-ink-500 line-through decoration-ink-300' : isRecovery ? 'text-ink-500' : 'text-ink-900'
-                      }`}
-                    >
-                      {day.dayName}
-                    </h3>
-                  </div>
+        <DayDots
+          ariaLabel="ตารางสัปดาห์นี้"
+          mode="select"
+          selectedKey={viewDay}
+          todayKey={todayName}
+          onPick={setViewDay}
+          days={weeklySchedule.map((day) => ({
+            key: day.dayName,
+            short: day.dayShort,
+            label: day.dayName,
+            active: day.focusType !== 'recovery',
+            done: Boolean(checkedDays[day.dayName]),
+          }))}
+        />
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-ink-500 tabular-data">{day.totalMinutes} นาที</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleDayCompleted(day)}
-                      aria-label={`ทำแล้ว ${day.dayName}`}
-                      aria-pressed={isDone}
-                      className={`tactile-btn w-9 h-9 rounded-full inline-flex items-center justify-center ${
-                        isDone ? 'bg-sage-600 text-white' : 'border-[1.5px] border-ink-300 text-transparent hover:text-ink-300'
-                      }`}
-                    >
-                      <Check className="w-4 h-4" strokeWidth={3} />
-                    </button>
-                  </div>
-                </div>
-
-                <ul className="space-y-0.5">
-                  {day.sessions.map((sess, i) => (
-                    <li key={i} className="text-sm text-ink-700 truncate">
-                      {sess.title} · <span className="tabular-data">{sess.durationMinutes}</span> นาที · {sess.intensityLabel}
-                    </li>
-                  ))}
-                </ul>
+        {(() => {
+          const day = weeklySchedule.find((d) => d.dayName === viewDay) ?? weeklySchedule[0];
+          if (!day) return null;
+          const isRecovery = day.focusType === 'recovery';
+          const isDone = Boolean(checkedDays[day.dayName]);
+          return (
+            <div key={day.dayName} className="rounded-2xl glass-subtle p-3 space-y-2 animate-list-item">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold text-ink-900">{day.dayName}</h3>
+                {!isRecovery && (
+                  <button
+                    type="button"
+                    onClick={() => toggleDayCompleted(day)}
+                    aria-pressed={isDone}
+                    className={`tactile-btn h-8 rounded-full pl-2.5 pr-3 text-sm font-semibold inline-flex items-center gap-1 ${
+                      isDone ? 'glass-btn-primary' : 'glass-pill text-ink-700'
+                    }`}
+                  >
+                    <Check className="w-4 h-4" strokeWidth={3} />
+                    <span>{isDone ? 'ทำแล้ว' : 'ทำ'}</span>
+                  </button>
+                )}
               </div>
-            );
-          })}
-        </div>
+              {isRecovery ? (
+                <p className="flex items-center gap-1.5 text-sm text-ink-500">
+                  <Moon className="w-4 h-4" aria-hidden="true" />
+                  พัก
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {day.sessions.map((sess, i) => {
+                    const Icon = exerciseIcon(sess.exerciseType);
+                    return (
+                      <li key={i} className="flex items-center gap-2 text-sm text-ink-900 min-w-0">
+                        <Icon className="w-4 h-4 text-sage-600 shrink-0" aria-hidden="true" />
+                        <span className="flex-1 min-w-0 truncate">{sess.title}</span>
+                        <span className="inline-flex items-center gap-1 text-xs text-ink-500 tabular-data shrink-0">
+                          <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                          {sess.durationMinutes}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })()}
       </section>
     </div>
   );

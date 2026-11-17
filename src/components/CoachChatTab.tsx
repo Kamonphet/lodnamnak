@@ -1,10 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, ShieldAlert } from 'lucide-react';
+import { ArrowUp, Footprints, GlassWater, MessageCircle, Scale, ShieldAlert, Utensils } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { buildContextualCoachSuggestions } from '../domain/coachAssistant';
 import { CoachChatMessage, UserProfile } from '../domain/types';
 import { prefersReducedMotion } from '../hooks/useCountUp';
 
 const TYPING_MS = 650;
+
+/** ไอคอนของคำถามแนะนำ เดาจากคำในข้อความ */
+function promptIcon(text: string): LucideIcon {
+  if (/น้ำหนัก|ชั่ง|ผอม|ลด/.test(text)) return Scale;
+  if (/ดื่มน้ำ|แก้ว/.test(text)) return GlassWater;
+  if (/ออกกำลัง|เดิน|วิ่ง|เวต|ปั่น|ว่าย|เผาผลาญ/.test(text)) return Footprints;
+  if (/กิน|อาหาร|เมนู|มื้อ|ข้าว|โปรตีน|แคล/.test(text)) return Utensils;
+  return MessageCircle;
+}
 
 interface CoachChatTabProps {
   profile: UserProfile;
@@ -14,7 +24,7 @@ interface CoachChatTabProps {
 
 export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, onSendMessage }) => {
   const [input, setInput] = useState('');
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const logRef = useRef<HTMLDivElement | null>(null);
 
   const suggestedPrompts = useMemo(() => buildContextualCoachSuggestions(profile), [profile]);
 
@@ -39,7 +49,9 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, o
   }, [typingFor]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // เลื่อนเฉพาะกล่องแชท ไม่ให้ทั้งหน้าเลื่อนจนหัวข้อหลุดจอ
+    const el = logRef.current;
+    el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages.length, typingFor]);
 
   const visibleMessages = typingFor ? messages.filter((m) => m.id !== typingFor) : messages;
@@ -56,7 +68,30 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, o
     <div className="flex flex-col h-[calc(100dvh-10.5rem)] min-h-[460px]">
       <h1 className="text-[22px] font-bold text-ink-900 mb-3">โค้ช</h1>
 
-      <div className="flex-1 overflow-y-auto space-y-3 pb-2 pr-1" role="log" aria-label="บทสนทนากับโค้ช">
+      <div ref={logRef} className="flex-1 overflow-y-auto space-y-3 pb-2 pr-1" role="log" aria-label="บทสนทนากับโค้ช">
+        {messages.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center gap-4 py-8">
+            <span className="w-16 h-16 rounded-full bg-sage-50 text-sage-600 inline-flex items-center justify-center">
+              <MessageCircle className="w-8 h-8" aria-hidden="true" />
+            </span>
+            <div className="flex flex-col items-stretch gap-2 w-full max-w-[300px]">
+              {suggestedPrompts.slice(0, 4).map((prompt) => {
+                const Icon = promptIcon(prompt);
+                return (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => onSendMessage(prompt)}
+                    className="tactile-btn min-h-[44px] rounded-2xl glass-pill px-3.5 text-sm text-ink-900 inline-flex items-center gap-2 text-left"
+                  >
+                    <Icon className="w-4 h-4 text-sage-600 shrink-0" aria-hidden="true" />
+                    {prompt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {visibleMessages.map((msg) => {
           if (msg.sender === 'user') {
             return (
@@ -98,20 +133,24 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, o
             </div>
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       <div className="flex gap-1.5 overflow-x-auto py-2 -mx-4 px-4 [scrollbar-width:none]">
-        {suggestedPrompts.map((prompt) => (
-          <button
-            key={prompt}
-            type="button"
-            onClick={() => onSendMessage(prompt)}
-            className="tactile-btn shrink-0 h-8 rounded-full glass-pill px-3 text-sm text-ink-700"
-          >
-            {prompt}
-          </button>
-        ))}
+        {messages.length > 0 &&
+          suggestedPrompts.map((prompt) => {
+            const Icon = promptIcon(prompt);
+            return (
+              <button
+                key={prompt}
+                type="button"
+                onClick={() => onSendMessage(prompt)}
+                className="tactile-btn shrink-0 h-8 rounded-full glass-pill pl-2.5 pr-3 text-sm text-ink-700 inline-flex items-center gap-1.5"
+              >
+                <Icon className="w-3.5 h-3.5 text-sage-600 shrink-0" aria-hidden="true" />
+                {prompt}
+              </button>
+            );
+          })}
       </div>
 
       <form onSubmit={handleSubmit} className="flex gap-2 items-center">

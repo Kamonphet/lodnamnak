@@ -1,14 +1,24 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import {
+  ALargeSmall,
+  BatteryLow,
   ChevronRight,
   Download,
+  GlassWater,
+  Info,
+  PartyPopper,
+  Scale,
   Trash2,
   Upload,
   UserRound,
   Users,
+  Utensils,
+  Waves,
   X,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { DayDots } from './DayDots';
 import {
   BOTTOM_STYLES,
   CLOTH_COLORS,
@@ -193,12 +203,54 @@ function CharacterEditor({
   );
 }
 
-const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+const Row: React.FC<{ label: string; Icon?: LucideIcon; children: React.ReactNode }> = ({ label, Icon, children }) => (
   <div className="py-2.5 flex items-center justify-between gap-3 min-h-[48px]">
-    <span className="text-sm text-ink-900">{label}</span>
+    <span className="flex items-center gap-2.5 text-sm text-ink-900 min-w-0">
+      {Icon && <Icon className="w-4 h-4 text-ink-500 shrink-0" aria-hidden="true" />}
+      {label}
+    </span>
     <div className="shrink-0">{children}</div>
   </div>
 );
+
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+/** แก้วขนาดต่าง ๆ: ความสูงตามปริมาณ */
+function GlassSizePicker({ value, options, onPick }: { value: number; options: readonly number[]; onPick: (ml: number) => void }) {
+  const max = Math.max(...options);
+  return (
+    <div role="radiogroup" aria-label="ขนาดแก้วน้ำ" className="flex items-end gap-2">
+      {options.map((ml) => {
+        const active = value === ml;
+        const h = 18 + (ml / max) * 22;
+        return (
+          <button
+            key={ml}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onPick(ml)}
+            className={`tactile-btn flex-1 rounded-2xl pt-2 pb-1.5 flex flex-col items-center justify-end gap-1 transition-colors ${
+              active ? 'glass-subtle-active' : 'hover:bg-cream-100'
+            }`}
+          >
+            <svg viewBox="0 0 24 32" style={{ height: h, width: h * 0.75 }} aria-hidden="true">
+              <path
+                d="M3 2 H21 L18.6 28 Q18.4 30 16.4 30 H7.6 Q5.6 30 5.4 28 Z"
+                fill={active ? '#5B87A6' : '#F6EEE2'}
+                stroke={active ? '#43698A' : '#D8CAB6'}
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+                className="transition-[fill,stroke] duration-200"
+              />
+            </svg>
+            <span className={`text-xs tabular-data ${active ? 'font-bold text-sky-800' : 'text-ink-500'}`}>{ml}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void; label: string }> = ({
   checked,
@@ -294,7 +346,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
           </Section>
 
           <Section title="การแจ้งเตือน">
-            <Row label="ชั่งน้ำหนักประจำสัปดาห์">
+            <Row label="ชั่งน้ำหนักประจำสัปดาห์" Icon={Scale}>
               <Toggle
                 label="เตือนชั่งน้ำหนัก"
                 checked={settings.weighInReminder}
@@ -302,40 +354,44 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
               />
             </Row>
             {settings.weighInReminder && (
-              <div className="py-2.5 space-y-2">
-                <span className="text-sm text-ink-900">วันชั่งน้ำหนัก</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {[-1, 0, 1, 2, 3, 4, 5, 6].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => onUpdateSettings({ weighInWeekday: d })}
-                      aria-pressed={settings.weighInWeekday === d}
-                      className={`tactile-btn min-w-[40px] h-9 px-2.5 rounded-full text-xs font-bold ${
-                        settings.weighInWeekday === d ? 'glass-btn-primary' : 'glass-pill text-ink-900'
-                      }`}
-                    >
-                      {d === -1 ? 'ทุก 7 วัน' : THAI_WEEKDAYS[d]}
-                    </button>
-                  ))}
-                </div>
+              <div className="pb-3 pt-1 space-y-2.5">
+                <DayDots
+                  ariaLabel="วันชั่งน้ำหนัก"
+                  onPick={(k) => onUpdateSettings({ weighInWeekday: Number(k) })}
+                  days={WEEK_ORDER.map((d) => ({
+                    key: String(d),
+                    short: THAI_WEEKDAYS[d],
+                    label: `ชั่งทุก${THAI_WEEKDAYS[d]}`,
+                    active: settings.weighInWeekday === d,
+                  }))}
+                />
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings({ weighInWeekday: -1 })}
+                  aria-pressed={settings.weighInWeekday === -1}
+                  className={`tactile-btn h-8 px-3 rounded-full text-xs font-bold ${
+                    settings.weighInWeekday === -1 ? 'glass-btn-primary' : 'glass-pill text-ink-900'
+                  }`}
+                >
+                  ทุก 7 วัน
+                </button>
               </div>
             )}
-            <Row label="ดื่มน้ำ">
+            <Row label="ดื่มน้ำ" Icon={GlassWater}>
               <Toggle
                 label="เตือนดื่มน้ำ"
                 checked={settings.waterReminder}
                 onChange={(v) => onUpdateSettings({ waterReminder: v })}
               />
             </Row>
-            <Row label="บันทึกอาหาร">
+            <Row label="บันทึกอาหาร" Icon={Utensils}>
               <Toggle
                 label="เตือนบันทึกอาหาร"
                 checked={settings.mealReminder}
                 onChange={(v) => onUpdateSettings({ mealReminder: v })}
               />
             </Row>
-            <Row label="แจ้งเมื่อทำครบทุกข้อ">
+            <Row label="แจ้งเมื่อทำครบทุกข้อ" Icon={PartyPopper}>
               <Toggle
                 label="แจ้งเมื่อทำครบทุกข้อของวัน"
                 checked={settings.celebrationToasts}
@@ -351,41 +407,34 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
               onClick={onEditProfile}
             />
             <div className="py-2.5 space-y-2">
-              <span className="text-sm text-ink-900">ขนาดแก้วน้ำ</span>
-              <div className="flex flex-wrap gap-1.5">
-                {WATER_GLASS_OPTIONS.map((ml) => (
-                  <button
-                    key={ml}
-                    type="button"
-                    onClick={() => onUpdateSettings({ waterGlassMl: ml })}
-                    aria-pressed={settings.waterGlassMl === ml}
-                    className={`tactile-btn h-9 px-3 rounded-full text-xs font-bold tabular-data ${
-                      settings.waterGlassMl === ml ? 'glass-btn-primary' : 'glass-pill text-ink-900'
-                    }`}
-                  >
-                    {ml} มล.
-                  </button>
-                ))}
-              </div>
+              <span className="flex items-center gap-2.5 text-sm text-ink-900">
+                <GlassWater className="w-4 h-4 text-ink-500" aria-hidden="true" />
+                ขนาดแก้ว (มล.)
+              </span>
+              <GlassSizePicker
+                value={settings.waterGlassMl}
+                options={WATER_GLASS_OPTIONS}
+                onPick={(ml) => onUpdateSettings({ waterGlassMl: ml })}
+              />
             </div>
           </Section>
 
           <Section title="การแสดงผล">
-            <Row label="ลดภาพเคลื่อนไหว">
+            <Row label="ลดภาพเคลื่อนไหว" Icon={Waves}>
               <Toggle
                 label="ลดภาพเคลื่อนไหว"
                 checked={settings.reduceMotion}
                 onChange={(v) => onUpdateSettings({ reduceMotion: v })}
               />
             </Row>
-            <Row label="ตัวอักษรใหญ่">
+            <Row label="ตัวอักษรใหญ่" Icon={ALargeSmall}>
               <Toggle
                 label="ตัวอักษรใหญ่"
                 checked={settings.largeText}
                 onChange={(v) => onUpdateSettings({ largeText: v })}
               />
             </Row>
-            <Row label="หุ่น 3D โหมดประหยัดแบต">
+            <Row label="หุ่น 3D โหมดประหยัดแบต" Icon={BatteryLow}>
               <Toggle
                 label="หุ่น 3D โหมดประหยัดแบต"
                 checked={settings.lowPower3d}
@@ -411,7 +460,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
           </Section>
 
           <Section title="เกี่ยวกับ">
-            <Row label="เวอร์ชัน">
+            <Row label="เวอร์ชัน" Icon={Info}>
               <span className="text-sm font-semibold text-ink-700 tabular-data">{version}</span>
             </Row>
             <div className="py-2.5 space-y-1 text-xs text-ink-700 leading-relaxed">

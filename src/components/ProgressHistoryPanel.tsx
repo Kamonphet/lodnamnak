@@ -2,6 +2,23 @@ import React, { useState } from 'react';
 import { ML_PER_GLASS } from '../domain/gamification';
 import { formatDateLabel } from '../domain/progressHistory';
 import { ProgressSummary, WeightChartPoint } from '../domain/types';
+import { CalendarDays, Flame, GlassWater, Scale } from 'lucide-react';
+import { WeightTrack } from './WeightTrack';
+import { MacroPillBar } from './NutritionVisuals';
+import type { LucideIcon } from 'lucide-react';
+
+function StatTile({ Icon, value, unit, label, color }: { Icon: LucideIcon; value: string; unit: string; label: string; color: string }) {
+  return (
+    <div className="rounded-2xl glass-subtle px-2 py-2.5 flex flex-col items-center gap-1 text-center" title={label}>
+      <Icon className="w-5 h-5" style={{ color }} aria-hidden="true" />
+      <p className="text-base font-bold text-ink-900 tabular-data leading-none">
+        {value}
+        <span className="ml-0.5 text-xs font-semibold text-ink-500">{unit}</span>
+      </p>
+      <span className="sr-only">{label}</span>
+    </div>
+  );
+}
 
 interface ProgressHistoryPanelProps {
   progress: ProgressSummary;
@@ -29,6 +46,10 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({ prog
   const change = progress.weightChangeKg;
   const goodDirection = isLosing ? change <= 0 : change >= 0;
   const changeLabel = change === 0 ? '0' : `${change > 0 ? '+' : '−'}${Math.abs(change)}`;
+  const days = progress.dailyHistory.length;
+  const avgWaterMl = days
+    ? Math.round((progress.dailyHistory.reduce((t, d) => t + d.waterGlasses, 0) / days) * mlPerGlass)
+    : 0;
 
   const linePath = progress.chartPoints.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.xPct} ${pt.yPct}`).join(' ');
   const areaPath =
@@ -50,14 +71,11 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({ prog
           {changeLabel}
           <span className="ml-1.5 text-base font-semibold text-ink-500">กก.</span>
         </p>
-        <div className="h-2 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
-          <div className="bar-fill h-full rounded-full bg-sage-500" style={{ width: `${progress.progressPercent}%` }} />
-        </div>
-        <div className="space-y-1.5 pt-1">
-          <Row label="เริ่ม" value={`${progress.startWeightKg} กก.`} />
-          <Row label="ตอนนี้" value={`${progress.currentWeightKg} กก.`} strong />
-          <Row label="เป้าหมาย" value={`${progress.targetWeightKg} กก.`} />
-          <Row label="ออกกำลังกายสะสม" value={`${progress.totalBurnedCalories.toLocaleString('th-TH')} kcal`} />
+        <WeightTrack start={progress.startWeightKg} current={progress.currentWeightKg} target={progress.targetWeightKg} />
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          <StatTile Icon={Flame} value={progress.totalBurnedCalories.toLocaleString('th-TH')} unit="kcal" label="ออกกำลังกายสะสม" color="#D9843B" />
+          <StatTile Icon={GlassWater} value={avgWaterMl.toLocaleString('th-TH')} unit="มล." label="น้ำเฉลี่ยต่อวัน" color="#5B87A6" />
+          <StatTile Icon={CalendarDays} value={String(progress.totalTrackedDays)} unit="วัน" label="วันที่บันทึก" color="#47724A" />
         </div>
       </section>
 
@@ -162,14 +180,32 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({ prog
                       </>
                     }
                   />
-                  {item.foodsCount > 0 && (
-                    <p className="text-xs text-ink-500 tabular-data text-right">
-                      {item.foodsCount} รายการ · P {item.proteinGrams} · C {item.carbsGrams} · F {item.fatGrams} g
-                    </p>
-                  )}
-                  <Row label="น้ำ" value={`${(item.waterGlasses * mlPerGlass).toLocaleString('th-TH')} มล.`} />
-                  {item.exercisesCount > 0 && <Row label="ออกกำลังกาย" value={`~${item.burnedCalories} kcal`} />}
-                  {item.weightKg !== undefined && <Row label="น้ำหนัก" value={`${item.weightKg} กก.`} tone="text-ink-900 font-semibold" />}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-500 tabular-data">
+                    <span className="inline-flex items-center gap-1" title="น้ำ">
+                      <GlassWater className="w-3.5 h-3.5 text-sky-500" aria-hidden="true" />
+                      <span className="sr-only">น้ำ</span>
+                      {(item.waterGlasses * mlPerGlass).toLocaleString('th-TH')}
+                    </span>
+                    {item.exercisesCount > 0 && (
+                      <span className="inline-flex items-center gap-1" title="ออกกำลังกาย">
+                        <Flame className="w-3.5 h-3.5 text-peach-500" aria-hidden="true" />
+                        <span className="sr-only">ออกกำลังกาย</span>
+                        {item.burnedCalories}
+                      </span>
+                    )}
+                    {item.weightKg !== undefined && (
+                      <span className="inline-flex items-center gap-1 text-ink-900 font-semibold" title="น้ำหนัก">
+                        <Scale className="w-3.5 h-3.5 text-sage-600" aria-hidden="true" />
+                        <span className="sr-only">น้ำหนัก</span>
+                        {item.weightKg}
+                      </span>
+                    )}
+                    {item.foodsCount > 0 && (
+                      <span className="ml-auto">
+                        <MacroPillBar proteinGrams={item.proteinGrams} carbsGrams={item.carbsGrams} fatGrams={item.fatGrams} />
+                      </span>
+                    )}
+                  </div>
                 </li>
               );
             })}

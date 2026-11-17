@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, Droplets, Drumstick, Flame, Pencil, Scale, ShieldAlert, Target, Utensils } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Check, ChevronDown, Droplets, Drumstick, Flame, Pencil, PersonStanding, Rabbit, Scale, ShieldAlert, Target, ThumbsUp, TriangleAlert, Turtle, Utensils } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   GamificationSummary,
@@ -20,6 +20,7 @@ import { SegmentedTabs } from './SegmentedTabs';
 import { useCountUp } from '../hooks/useCountUp';
 import { PlateGauge, PlateLegend } from './PlateGauge';
 import { IconRing } from './IconRing';
+import { WeightTrack } from './WeightTrack';
 
 /** สีหน้าตัวละครตามวันนี้: ทำครบทุกข้อ = ขี้เล่น, กินเกินงบมาก = ตกใจ, ค่ำแล้วยังไม่บันทึกอาหาร = เศร้า */
 export function pickExpression(
@@ -70,6 +71,41 @@ const SECTIONS: { id: Section; label: string }[] = [
 
 const fmt = (n: number) => Math.round(n).toLocaleString('th-TH');
 
+const paceIcon = (rate: number): LucideIcon => (rate <= 0.3 ? Turtle : rate <= 0.6 ? PersonStanding : Rabbit);
+
+/** แถบช่วงพลังงาน: ลด / รักษา / เพิ่มกล้ามเนื้อ บนแกนเดียวกัน */
+function EnergyRangeBar({ metrics }: { metrics: HealthMetrics }) {
+  const lo = Math.min(metrics.weightLossRange.min, metrics.bmr);
+  const hi = metrics.weightGainRange.max;
+  const pos = (v: number) => ((v - lo) / Math.max(1, hi - lo)) * 100;
+  const bands = [
+    { r: metrics.weightLossRange, color: '#5E8B5F', label: 'ลด' },
+    { r: metrics.maintenanceRange, color: '#D8CAB6', label: 'รักษา' },
+    { r: metrics.weightGainRange, color: '#5B87A6', label: 'เพิ่ม' },
+  ];
+  return (
+    <div className="space-y-1 pb-1" aria-hidden="true">
+      <div className="relative h-2.5 rounded-full bg-cream-200">
+        {bands.map((b) => (
+          <span
+            key={b.label}
+            className="absolute top-0 h-full rounded-full opacity-90"
+            style={{ left: `${pos(b.r.min)}%`, width: `${Math.max(2, pos(b.r.max) - pos(b.r.min))}%`, background: b.color }}
+          />
+        ))}
+        <span className="absolute -top-1 w-0.5 h-[18px] rounded-full bg-ink-900" style={{ left: `${pos(metrics.bmr)}%` }} />
+      </div>
+      <div className="relative h-4 text-[11px] text-ink-500">
+        {bands.map((b) => (
+          <span key={b.label} className="absolute -translate-x-1/2" style={{ left: `${(pos(b.r.min) + pos(b.r.max)) / 2}%` }}>
+            {b.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const QUEST_ICON: Record<string, { Icon: LucideIcon; short: string; color: string }> = {
   log_meal: { Icon: Utensils, short: 'มื้ออาหาร', color: '#47724A' },
   active_or_water: { Icon: Droplets, short: 'น้ำ/ขยับ', color: '#5B87A6' },
@@ -77,35 +113,6 @@ const QUEST_ICON: Record<string, { Icon: LucideIcon; short: string; color: strin
   safe_calorie: { Icon: Scale, short: 'สมดุล', color: '#47724A' },
 };
 
-function WeightTrack({ start, current, target }: { start: number; current: number; target: number }) {
-  const span = start - target;
-  const pct = span === 0 ? 100 : Math.max(0, Math.min(100, ((start - current) / span) * 100));
-  const labelLeft = Math.max(12, Math.min(88, pct));
-  return (
-    <div className="pt-1" role="img" aria-label={`เริ่ม ${start} ตอนนี้ ${current} เป้า ${target} กก.`}>
-      <div className="relative h-5">
-        <span
-          className="absolute -translate-x-1/2 text-sm font-bold text-ink-900 tabular-data transition-[left] duration-500"
-          style={{ left: `${labelLeft}%` }}
-        >
-          {current}
-        </span>
-      </div>
-      <div className="relative h-1.5 rounded-full bg-cream-200 mt-1">
-        <div className="bar-fill h-full rounded-full bg-sage-500" style={{ width: `${pct}%` }} />
-        <span
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-cream-50 border-[3px] border-sage-600 transition-[left] duration-500"
-          style={{ left: `${pct}%` }}
-        />
-        <Target className="absolute -right-1 top-1/2 -translate-y-1/2 w-4 h-4 text-peach-500 bg-cream-50 rounded-full" aria-hidden="true" />
-      </div>
-      <div className="flex justify-between mt-1.5 text-xs text-ink-500 tabular-data">
-        <span>{current === start ? '' : start}</span>
-        <span>{target} กก.</span>
-      </div>
-    </div>
-  );
-}
 
 function LedgerRow({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: string }) {
   return (
@@ -385,8 +392,9 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       {section === 'plan' && (
         <div className="space-y-4 motion-stagger">
           <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="pace-title">
-            <h2 id="pace-title" className="text-sm font-semibold text-ink-900 tabular-data">
-              จังหวะลดน้ำหนัก · {profile.currentWeightKg} → {profile.targetWeightKg} กก.
+            <h2 id="pace-title" className="flex items-center gap-1.5 text-sm font-semibold text-ink-900 tabular-data">
+              <Scale className="w-4 h-4 text-sage-600" aria-hidden="true" />
+              {profile.currentWeightKg} → {profile.targetWeightKg} กก.
             </h2>
             <div className="space-y-2">
               {timelines.map((opt) => {
@@ -397,13 +405,30 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     className={`rounded-2xl p-3 ${selected ? 'glass-subtle-active' : 'glass-subtle'}`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-ink-900">{opt.label}</h3>
-                        <p className="text-sm text-ink-700 tabular-data">
-                          {opt.estimatedWeeks === 0
-                            ? `${fmt(opt.dailyCalorieTarget)} kcal/วัน`
-                            : `~${opt.estimatedWeeks} สัปดาห์ · ${fmt(opt.dailyCalorieTarget)} kcal/วัน`}
-                        </p>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {(() => {
+                          const PaceIcon = paceIcon(opt.rateKgPerWeek);
+                          return (
+                            <span className={`w-9 h-9 rounded-full inline-flex items-center justify-center shrink-0 ${selected ? 'bg-sage-600 text-white' : 'bg-cream-50 text-sage-700'}`}>
+                              <PaceIcon className="w-5 h-5" aria-hidden="true" />
+                            </span>
+                          );
+                        })()}
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-bold text-ink-900">{opt.label}</h3>
+                          <p className="flex items-center gap-2.5 text-sm text-ink-700 tabular-data">
+                            {opt.estimatedWeeks > 0 && (
+                              <span className="inline-flex items-center gap-1" title="ระยะเวลาโดยประมาณ">
+                                <CalendarDays className="w-3.5 h-3.5 text-ink-500" aria-hidden="true" />
+                                ~{opt.estimatedWeeks} สัปดาห์
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1" title="kcal ต่อวัน">
+                              <Utensils className="w-3.5 h-3.5 text-ink-500" aria-hidden="true" />
+                              {fmt(opt.dailyCalorieTarget)}
+                            </span>
+                          </p>
+                        </div>
                       </div>
                       {timelines.length > 1 && (
                         <button
@@ -422,15 +447,34 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         </button>
                       )}
                     </div>
-                    {selected && (
-                      <div className="mt-2 pt-2 border-t border-line space-y-1 text-sm text-ink-700">
-                        <p>
-                          <strong className="text-sage-700">ข้อดี</strong> {opt.pros.join(' ')}
-                        </p>
-                        <p>
-                          <strong className="text-peach-600">ข้อสังเกต</strong> {opt.cons.join(' ')}
-                        </p>
-                      </div>
+                    {selected && (opt.pros.length > 0 || opt.cons.length > 0) && (
+                      <details className="group mt-2 pt-2 border-t border-line text-sm text-ink-700">
+                        <summary className="flex items-start gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                          <span className="flex-1 min-w-0 space-y-1">
+                            {opt.pros[0] && (
+                              <span className="flex items-start gap-1.5">
+                                <ThumbsUp className="w-4 h-4 text-sage-600 shrink-0 mt-0.5" aria-label="ข้อดี" />
+                                <span className="line-clamp-1 group-open:line-clamp-none">{opt.pros[0]}</span>
+                              </span>
+                            )}
+                            {opt.cons[0] && (
+                              <span className="flex items-start gap-1.5">
+                                <TriangleAlert className="w-4 h-4 text-peach-500 shrink-0 mt-0.5" aria-label="ข้อสังเกต" />
+                                <span className="line-clamp-1 group-open:line-clamp-none">{opt.cons[0]}</span>
+                              </span>
+                            )}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-ink-500 shrink-0 mt-0.5 transition-transform group-open:rotate-180" aria-label="ดูทั้งหมด" />
+                        </summary>
+                        <div className="mt-1 pl-[22px] space-y-1">
+                          {opt.pros.slice(1).map((t) => (
+                            <p key={t}>{t}</p>
+                          ))}
+                          {opt.cons.slice(1).map((t) => (
+                            <p key={t}>{t}</p>
+                          ))}
+                        </div>
+                      </details>
                     )}
                   </div>
                 );
@@ -439,7 +483,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </section>
 
           <section className="rounded-3xl glass-card p-4 space-y-2" aria-labelledby="energy-title">
-            <h2 id="energy-title" className="text-sm font-semibold text-ink-900">ค่าพลังงานของคุณ</h2>
+            <h2 id="energy-title" className="flex items-center gap-1.5 text-sm font-semibold text-ink-900">
+              <Flame className="w-4 h-4 text-peach-500" aria-hidden="true" />
+              ค่าพลังงาน
+            </h2>
+            <EnergyRangeBar metrics={metrics} />
             <div className="space-y-1.5">
               <LedgerRow label={`BMI · ${metrics.bmiCategory}`} value={String(metrics.bmi)} />
               <LedgerRow label="BMR ขณะพัก" value={`${fmt(metrics.bmr)} kcal`} />
