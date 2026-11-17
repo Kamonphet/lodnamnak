@@ -14,6 +14,8 @@ import {
   Sun,
   Sunrise,
   Utensils,
+  Wheat,
+  Droplet,
 } from 'lucide-react';
 import { MealSlotId, PlannedMealItem, PlateSelection } from '../domain/types';
 
@@ -123,15 +125,34 @@ export const MacroPillBar: React.FC<{
   isEstimated?: boolean;
 }> = ({ proteinGrams, carbsGrams, fatGrams, isEstimated }) => {
   const prefix = isEstimated ? '~' : '';
+  const items = [
+    { label: 'โปรตีน', Icon: Drumstick, color: '#D9843B', g: proteinGrams },
+    { label: 'คาร์บ', Icon: Wheat, color: '#C9992E', g: carbsGrams },
+    { label: 'ไขมัน', Icon: Droplet, color: '#5B87A6', g: fatGrams },
+  ];
   return (
-    <p className="text-xs text-ink-500 tabular-data">
-      P {prefix}
-      {proteinGrams} · C {prefix}
-      {carbsGrams} · F {prefix}
-      {fatGrams} g
+    <p className="flex items-center gap-2.5 text-xs text-ink-500 tabular-data">
+      {items.map(({ label, Icon, color, g }) => (
+        <span key={label} className="inline-flex items-center gap-0.5" title={label}>
+          <Icon className="w-3.5 h-3.5" style={{ color }} aria-hidden="true" />
+          <span className="sr-only">{label}</span>
+          {prefix}
+          {Math.round(g)}g
+        </span>
+      ))}
     </p>
   );
 };
+
+/** มื้อของรายการที่บันทึก เดาจากเวลา */
+export function slotFromTime(iso: string): MealSlotId {
+  const d = new Date(iso);
+  const h = d.getHours() + d.getMinutes() / 60;
+  if (h < 10.5) return 'breakfast';
+  if (h < 14.5) return 'lunch';
+  if (h < 17) return 'snack';
+  return 'dinner';
+}
 
 export const PlateIllustration: React.FC<{
   meal?: PlannedMealItem;

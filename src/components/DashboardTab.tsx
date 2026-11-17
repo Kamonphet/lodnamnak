@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, Pencil, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Check, Droplets, Drumstick, Flame, Pencil, Scale, ShieldAlert, Target, Utensils } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
   GamificationSummary,
   GoalTimelineOption,
@@ -17,6 +18,8 @@ import { ProgressHistoryPanel } from './ProgressHistoryPanel';
 import { WaterGlassTracker } from './WaterGlassTracker';
 import { SegmentedTabs } from './SegmentedTabs';
 import { useCountUp } from '../hooks/useCountUp';
+import { PlateGauge, PlateLegend } from './PlateGauge';
+import { IconRing } from './IconRing';
 
 /** สีหน้าตัวละครตามวันนี้: ทำครบทุกข้อ = ขี้เล่น, กินเกินงบมาก = ตกใจ, ค่ำแล้วยังไม่บันทึกอาหาร = เศร้า */
 export function pickExpression(
@@ -67,6 +70,43 @@ const SECTIONS: { id: Section; label: string }[] = [
 
 const fmt = (n: number) => Math.round(n).toLocaleString('th-TH');
 
+const QUEST_ICON: Record<string, { Icon: LucideIcon; short: string; color: string }> = {
+  log_meal: { Icon: Utensils, short: 'มื้ออาหาร', color: '#47724A' },
+  active_or_water: { Icon: Droplets, short: 'น้ำ/ขยับ', color: '#5B87A6' },
+  protein_goal: { Icon: Drumstick, short: 'โปรตีน', color: '#D9843B' },
+  safe_calorie: { Icon: Scale, short: 'สมดุล', color: '#47724A' },
+};
+
+function WeightTrack({ start, current, target }: { start: number; current: number; target: number }) {
+  const span = start - target;
+  const pct = span === 0 ? 100 : Math.max(0, Math.min(100, ((start - current) / span) * 100));
+  const labelLeft = Math.max(12, Math.min(88, pct));
+  return (
+    <div className="pt-1" role="img" aria-label={`เริ่ม ${start} ตอนนี้ ${current} เป้า ${target} กก.`}>
+      <div className="relative h-5">
+        <span
+          className="absolute -translate-x-1/2 text-sm font-bold text-ink-900 tabular-data transition-[left] duration-500"
+          style={{ left: `${labelLeft}%` }}
+        >
+          {current}
+        </span>
+      </div>
+      <div className="relative h-1.5 rounded-full bg-cream-200 mt-1">
+        <div className="bar-fill h-full rounded-full bg-sage-500" style={{ width: `${pct}%` }} />
+        <span
+          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-cream-50 border-[3px] border-sage-600 transition-[left] duration-500"
+          style={{ left: `${pct}%` }}
+        />
+        <Target className="absolute -right-1 top-1/2 -translate-y-1/2 w-4 h-4 text-peach-500 bg-cream-50 rounded-full" aria-hidden="true" />
+      </div>
+      <div className="flex justify-between mt-1.5 text-xs text-ink-500 tabular-data">
+        <span>{current === start ? '' : start}</span>
+        <span>{target} กก.</span>
+      </div>
+    </div>
+  );
+}
+
 function LedgerRow({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: string }) {
   return (
     <div className={`ledger-row text-sm ${strong ? 'font-bold text-ink-900' : 'text-ink-700'}`}>
@@ -85,7 +125,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   dailyTotals,
   gamification,
   progress,
-  weightHistory,
   onSelectPace,
   onReportWeight,
   onAdjustWater,
@@ -103,10 +142,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const eaten = dailyTotals.consumedCalories;
   const remaining = dailyTotals.remainingCalories;
   const isOver = remaining < 0;
-  const usedPct = Math.min(100, Math.round((eaten / Math.max(1, target)) * 100));
-  const proteinPct = Math.min(100, Math.round((dailyTotals.consumedProtein / Math.max(1, dailyTotals.targetProtein)) * 100));
   const shownRemaining = useCountUp(Math.abs(remaining));
-  const shownProtein = useCountUp(dailyTotals.consumedProtein, 450, 1);
 
   // ทำครบทุกข้อ: วงเช็กเด้งพร้อมวงแสงจาง ๆ ครั้งเดียวตอนเพิ่งครบ
   const allDone = gamification.allQuestsCompletedToday;
@@ -207,58 +243,53 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
       {section === 'today' && (
         <div className="space-y-4 motion-stagger">
-          {/* งบพลังงานแบบบัญชีรายวัน */}
-          <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="budget-title">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 id="budget-title" className="text-sm font-semibold text-ink-500">
-                {isOver ? 'เกินงบวันนี้' : 'เหลือกินได้วันนี้'}
-              </h2>
-              <span className="text-sm text-ink-500 tabular-data">{usedPct}%</span>
-            </div>
-            <p className={`text-[40px] leading-none font-bold tabular-data ${isOver ? 'text-peach-600' : 'text-ink-900'}`}>
-              {fmt(shownRemaining)}
-              <span className="ml-1.5 text-base font-semibold text-ink-500">kcal</span>
-            </p>
-            <div className="h-2 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
-              <div
-                className={`bar-fill h-full rounded-full ${isOver ? 'bg-peach-500' : 'bg-sage-500'}`}
-                style={{ width: `${usedPct}%` }}
+          {/* งบพลังงาน: จานอาหาร */}
+          <section className="rounded-3xl glass-card p-4" aria-labelledby="budget-title">
+            <h2 id="budget-title" className="sr-only">งบพลังงานวันนี้</h2>
+            <div className="flex items-center gap-4">
+              <PlateGauge
+                targetCalories={target}
+                consumedCalories={eaten}
+                proteinGrams={dailyTotals.consumedProtein}
+                carbsGrams={dailyTotals.consumedCarbs}
+                fatGrams={dailyTotals.consumedFat}
+                size={128}
               />
-            </div>
-            <div className="pt-1 space-y-1.5">
-              <LedgerRow label="เป้าหมาย" value={fmt(target)} />
-              <LedgerRow label="กินแล้ว" value={`− ${fmt(eaten)}`} />
-              <div className="ledger-total pt-1.5">
-                <LedgerRow
-                  label={isOver ? 'เกิน' : 'คงเหลือ'}
-                  value={fmt(Math.abs(remaining))}
-                  strong
-                  tone={isOver ? 'text-peach-600' : 'text-sage-700'}
-                />
+              <div className="flex-1 min-w-0 space-y-2.5">
+                <div>
+                  <p className="text-sm text-ink-500">{isOver ? 'เกิน' : 'เหลือ'}</p>
+                  <p className={`text-[34px] leading-none font-bold tabular-data ${isOver ? 'text-peach-600' : 'text-ink-900'}`}>
+                    {fmt(shownRemaining)}
+                    <span className="ml-1 text-sm font-semibold text-ink-500">kcal</span>
+                  </p>
+                </div>
+                <ul className="space-y-1 text-sm text-ink-700 tabular-data">
+                  <li className="flex items-center gap-1.5" title="เป้าหมาย">
+                    <Target className="w-4 h-4 text-ink-500" aria-hidden="true" />
+                    <span className="sr-only">เป้าหมาย</span>
+                    {fmt(target)}
+                  </li>
+                  <li className="flex items-center gap-1.5" title="กินแล้ว">
+                    <Utensils className="w-4 h-4 text-ink-500" aria-hidden="true" />
+                    <span className="sr-only">กินแล้ว</span>
+                    {fmt(eaten)}
+                  </li>
+                  {dailyTotals.burnedCalories > 0 && (
+                    <li className="flex items-center gap-1.5" title="เผาผลาญจากออกกำลังกาย">
+                      <Flame className="w-4 h-4 text-peach-500" aria-hidden="true" />
+                      <span className="sr-only">เผาผลาญ</span>
+                      {fmt(dailyTotals.burnedCalories)}
+                    </li>
+                  )}
+                </ul>
               </div>
-              {dailyTotals.burnedCalories > 0 && (
-                <p className="text-xs text-ink-500 tabular-data">ออกกำลังกายวันนี้ ~{fmt(dailyTotals.burnedCalories)} kcal</p>
-              )}
             </div>
-          </section>
-
-          {/* โปรตีน */}
-          <section className="rounded-3xl glass-card p-4 space-y-2" aria-labelledby="protein-title">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 id="protein-title" className="text-sm font-semibold text-ink-900">โปรตีน</h2>
-              <span className="text-sm text-ink-500 tabular-data">
-                {dailyTotals.remainingProtein > 0 ? `อีก ${dailyTotals.remainingProtein} g` : 'ถึงเป้าแล้ว'}
-              </span>
-            </div>
-            <p className="text-2xl font-bold text-ink-900 tabular-data">
-              {shownProtein}
-              <span className="ml-1 text-sm font-semibold text-ink-500">
-                / {metrics.proteinRangeGrams.min}–{metrics.proteinRangeGrams.max} g
-              </span>
-            </p>
-            <div className="h-2 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
-              <div className="bar-fill h-full rounded-full bg-peach-500" style={{ width: `${proteinPct}%` }} />
-            </div>
+            <PlateLegend
+              proteinGrams={dailyTotals.consumedProtein}
+              carbsGrams={dailyTotals.consumedCarbs}
+              fatGrams={dailyTotals.consumedFat}
+              className="mt-3 pt-3 border-t border-line justify-around"
+            />
           </section>
 
           <WaterGlassTracker
@@ -270,14 +301,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
           {/* น้ำหนัก */}
           <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="weight-title">
-            <div className="flex items-baseline justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Scale className="w-5 h-5 text-sage-600" aria-hidden="true" />
               <h2 id="weight-title" className="text-sm font-semibold text-ink-900">น้ำหนัก</h2>
-              {weightHistory.length > 0 && (
-                <span className="text-sm text-ink-500 tabular-data">
-                  เริ่ม {profile.startWeightKg} · เป้า {profile.targetWeightKg} กก.
-                </span>
-              )}
             </div>
+            <WeightTrack start={profile.startWeightKg} current={profile.currentWeightKg} target={profile.targetWeightKg} />
             <form onSubmit={handleWeightSubmit} className="flex gap-2">
               <div className="relative flex-1">
                 <input
@@ -310,7 +338,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
           {/* เช็กลิสต์ประจำวัน */}
           <section className="rounded-3xl glass-card p-4" aria-labelledby="checklist-title">
-            <div className="flex items-baseline justify-between gap-2 mb-1">
+            <div className="flex items-baseline justify-between gap-2">
               <h2 id="checklist-title" className="text-sm font-semibold text-ink-900">สิ่งที่ทำวันนี้</h2>
               <span className="inline-flex items-center gap-1.5 text-sm text-ink-500 tabular-data">
                 {allDone && (
@@ -326,24 +354,27 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 {gamification.todayCompletedQuests}/{gamification.totalDailyQuests}
               </span>
             </div>
-            <ul className="divide-y divide-line">
-              {gamification.quests.map((q) => (
-                <li key={q.id} className="py-2.5 flex items-center gap-3">
-                  <span
-                    className={`w-6 h-6 rounded-full shrink-0 inline-flex items-center justify-center transition-colors duration-200 ${
-                      q.completed ? 'bg-sage-600 text-white animate-check-pop' : 'border-[1.5px] border-ink-300'
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {q.completed && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
-                  </span>
-                  <span className="flex-1 min-w-0 text-sm">
-                    <span className={`strike ${q.completed ? 'is-done text-ink-500' : 'text-ink-900'}`}>{q.title}</span>
-                  </span>
-                  <span className="text-xs text-ink-500 tabular-data shrink-0">{q.progressLabel}</span>
-                  <span className="sr-only">{q.completed ? 'ทำแล้ว' : 'ยังไม่ทำ'}</span>
-                </li>
-              ))}
+            <ul className="grid grid-cols-4 gap-1 mt-3">
+              {gamification.quests.map((q) => {
+                const meta = QUEST_ICON[q.id] ?? QUEST_ICON.log_meal;
+                return (
+                  <li key={q.id} className="flex flex-col items-center gap-1.5 text-center" title={q.title}>
+                    <IconRing
+                      Icon={meta.Icon}
+                      progress={q.progress ?? (q.completed ? 1 : 0)}
+                      done={q.completed}
+                      color={meta.color}
+                      warn={q.over}
+                    />
+                    <span className={`text-xs leading-tight ${q.completed ? 'text-ink-900 font-semibold' : 'text-ink-500'}`}>
+                      {meta.short}
+                    </span>
+                    <span className="sr-only">
+                      {q.title} {q.completed ? 'ทำแล้ว' : q.progressLabel}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         </div>

@@ -312,6 +312,10 @@ export interface DailyQuestItem {
   id: 'log_meal' | 'protein_goal' | 'safe_calorie' | 'active_or_water';
   title: string;
   progressLabel: string;
+  /** ความคืบหน้า 0–1 สำหรับวงรอบไอคอน */
+  progress?: number;
+  /** เกินช่วงที่ปลอดภัย (ใช้กับ safe_calorie) */
+  over?: boolean;
   xpReward: number;
   completed: boolean;
 }

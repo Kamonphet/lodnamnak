@@ -208,6 +208,7 @@ export function calculateGamificationSummary(
       id: 'log_meal',
       title: 'บันทึกมื้ออาหารวันนี้',
       progressLabel: `${Math.min(todayFoods.length, 1)}/1 มื้อ`,
+      progress: Math.min(1, todayFoods.length),
       xpReward: 20,
       completed: questMealDone,
     },
@@ -218,6 +219,7 @@ export function calculateGamificationSummary(
         todayExercises.length >= 1
           ? `ออกกำลังแล้ว ${todayExercises.length} รายการ`
           : `น้ำ ${todayWaterGlasses}/${TARGET_WATER_GLASSES} แก้ว`,
+      progress: todayExercises.length >= 1 ? 1 : Math.min(1, todayWaterGlasses / TARGET_WATER_GLASSES),
       xpReward: 25,
       completed: questMoveOrWaterDone,
     },
@@ -225,6 +227,7 @@ export function calculateGamificationSummary(
       id: 'protein_goal',
       title: 'โปรตีนถึงเกณฑ์ดูแลกล้ามเนื้อ',
       progressLabel: `${consumedProtein}/${proteinGoalThreshold} g`,
+      progress: Math.min(1, consumedProtein / Math.max(1, proteinGoalThreshold)),
       xpReward: 30,
       completed: questProteinDone,
     },
@@ -232,6 +235,8 @@ export function calculateGamificationSummary(
       id: 'safe_calorie',
       title: 'สมดุลพลังงานปลอดภัย',
       progressLabel: `${consumedCalories.toLocaleString()} / ${minSafeCalories.toLocaleString()}–${maxSafeCalories.toLocaleString()} kcal`,
+      progress: consumedCalories > maxSafeCalories ? 1 : Math.min(1, consumedCalories / Math.max(1, minSafeCalories)),
+      over: consumedCalories > maxSafeCalories,
       xpReward: 35,
       completed: questSafeCalorieDone,
     },

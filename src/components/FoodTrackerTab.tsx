@@ -5,6 +5,7 @@ import {
   Check,
   Loader2,
   Plus,
+  Search,
   SlidersHorizontal,
   Trash2,
   Utensils,
@@ -35,6 +36,9 @@ import { ConfirmDialogState } from './ConfirmDialog';
 import { ToastMessage } from './LiquidToast';
 import { MealDesignerPanel } from './MealDesignerPanel';
 import { SegmentedTabs } from './SegmentedTabs';
+import { PlateGauge, MACRO_META } from './PlateGauge';
+import { IconRing } from './IconRing';
+import { MacroPillBar, SlotTimeBadge, slotFromTime } from './NutritionVisuals';
 import { useCountUp } from '../hooks/useCountUp';
 
 interface FoodTrackerTabProps {
@@ -340,42 +344,41 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
       <h1 className="text-[22px] font-bold text-ink-900">อาหาร</h1>
 
       {/* สรุปวันนี้: เหลือกี่ kcal + สารอาหารหลักแบบแถวบัญชี */}
-      <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="food-summary-title">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 id="food-summary-title" className="text-sm font-semibold text-ink-500">
-            {isOver ? 'เกินงบวันนี้' : 'เหลือกินได้วันนี้'}
-          </h2>
-          <span className="text-sm text-ink-500 tabular-data">
-            {dailyTotals.consumedCalories.toLocaleString()} / {dailyTotals.targetCalories.toLocaleString()} kcal
-          </span>
+      <section className="rounded-3xl glass-card p-4" aria-labelledby="food-summary-title">
+        <h2 id="food-summary-title" className="sr-only">สรุปวันนี้</h2>
+        <div className="flex items-center gap-3">
+          <PlateGauge
+            targetCalories={dailyTotals.targetCalories}
+            consumedCalories={dailyTotals.consumedCalories}
+            proteinGrams={dailyTotals.consumedProtein}
+            carbsGrams={dailyTotals.consumedCarbs}
+            fatGrams={dailyTotals.consumedFat}
+            size={92}
+          />
+          <div className="min-w-0">
+            <p className="text-sm text-ink-500">{isOver ? 'เกิน' : 'เหลือ'}</p>
+            <p className={`text-[28px] leading-none font-bold tabular-data ${isOver ? 'text-peach-600' : 'text-ink-900'}`}>
+              {shownRemaining.toLocaleString()}
+              <span className="ml-1 text-sm font-semibold text-ink-500">kcal</span>
+            </p>
+          </div>
         </div>
-        <p className={`text-[32px] leading-none font-bold tabular-data ${isOver ? 'text-peach-600' : 'text-ink-900'}`}>
-          {shownRemaining.toLocaleString()}
-          <span className="ml-1.5 text-base font-semibold text-ink-500">kcal</span>
-        </p>
-        <div className="space-y-2 pt-1">
-          {[
-            { label: 'โปรตีน', value: dailyTotals.consumedProtein, target: dailyTotals.targetProtein, bar: 'bg-peach-500' },
-            { label: 'คาร์บ', value: dailyTotals.consumedCarbs, target: targetCarbsGrams, bar: 'bg-sunny-500' },
-            { label: 'ไขมัน', value: dailyTotals.consumedFat, target: targetFatGrams, bar: 'bg-sky-500' },
-          ].map((m) => (
-            <div key={m.label} className="space-y-1">
-              <div className="ledger-row text-sm text-ink-700">
-                <span>{m.label}</span>
-                <span className="ledger-fill" aria-hidden="true" />
-                <span className="tabular-data">
-                  <strong className="text-ink-900">{m.value}</strong> / {m.target} g
+        <ul className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-line">
+          {MACRO_META.map(({ key, label, Icon, color }) => {
+            const value = key === 'protein' ? dailyTotals.consumedProtein : key === 'carbs' ? dailyTotals.consumedCarbs : dailyTotals.consumedFat;
+            const target = key === 'protein' ? dailyTotals.targetProtein : key === 'carbs' ? targetCarbsGrams : targetFatGrams;
+            return (
+              <li key={key} className="flex items-center gap-2 min-w-0" title={label}>
+                <IconRing Icon={Icon} progress={value / Math.max(1, target)} color={color} size={40} warn={value > target * 1.15 && key !== 'protein'} />
+                <span className="text-sm tabular-data leading-tight min-w-0">
+                  <span className="sr-only">{label}</span>
+                  <strong className="block text-ink-900">{Math.round(value)}</strong>
+                  <span className="text-xs text-ink-500">/{Math.round(target)}g</span>
                 </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
-                <div
-                  className={`bar-fill h-full rounded-full ${m.bar}`}
-                  style={{ width: `${Math.min(100, Math.round((m.value / Math.max(1, m.target)) * 100))}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
       <SegmentedTabs
@@ -410,18 +413,27 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
           {/* เพิ่มรายการอาหาร */}
           <section className="rounded-3xl glass-card p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-base font-bold text-ink-900">เพิ่มอาหาร</h2>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setMode((m) => (m === 'natural' ? 'manual' : 'natural'))
-                }
-                className="tactile-btn h-8 inline-flex items-center gap-1 rounded-full px-2.5 text-sm font-semibold text-sage-700 hover:bg-sage-50"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>{mode === 'natural' ? 'กรอกตัวเลขเอง' : 'ค้นหาเมนู'}</span>
-              </button>
+              <h2 className="sr-only">เพิ่มอาหาร</h2>
+              <div role="group" aria-label="วิธีเพิ่มอาหาร" className="inline-flex p-0.5 rounded-full bg-cream-200">
+                {([
+                  ['natural', Search, 'ค้นหาเมนู'],
+                  ['manual', SlidersHorizontal, 'กรอกตัวเลขเอง'],
+                ] as const).map(([m, Icon, label]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    aria-label={label}
+                    aria-pressed={mode === m}
+                    title={label}
+                    className={`tactile-btn w-9 h-8 rounded-full inline-flex items-center justify-center transition-colors ${
+                      mode === m ? 'bg-cream-50 text-sage-700 shadow-[0_1px_2px_rgba(42,34,27,0.12)]' : 'text-ink-500'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div key={mode} className="space-y-3">
@@ -778,6 +790,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
             <ul>
               {todayFoods.map((item) => (
                 <li key={item.id} className="animate-row-in py-2.5 flex items-start gap-2 border-b border-line last:border-b-0">
+                  <SlotTimeBadge slotId={slotFromTime(item.timestamp)} />
                   <div className="flex-1 min-w-0">
                     <div className="ledger-row text-sm">
                       <span className="font-semibold text-ink-900 truncate">{item.normalizedName}</span>
@@ -787,9 +800,10 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                         {item.calories}
                       </span>
                     </div>
-                    <p className="text-xs text-ink-500 truncate tabular-data">
-                      {item.portionNote} · P {item.proteinGrams} · C {item.carbsGrams} · F {item.fatGrams} g
-                    </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MacroPillBar proteinGrams={item.proteinGrams} carbsGrams={item.carbsGrams} fatGrams={item.fatGrams} />
+                      {item.portionNote && <span className="text-xs text-ink-500 truncate">{item.portionNote}</span>}
+                    </div>
                   </div>
                   <button
                     type="button"

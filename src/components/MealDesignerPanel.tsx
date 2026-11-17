@@ -5,6 +5,7 @@ import {
   Plus,
   RefreshCw,
   SlidersHorizontal,
+  Target,
   X,
 } from 'lucide-react';
 import {
@@ -271,9 +272,9 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
               ~{planSummary.kcal.toLocaleString()} / {planSummary.targetKcal.toLocaleString()} kcal
             </span>
           </div>
-          <p className="text-xs text-ink-500 tabular-data text-right">
-            P {planSummary.protein} · C {planSummary.carbs} · F {planSummary.fat} g
-          </p>
+          <div className="flex justify-end">
+            <MacroPillBar proteinGrams={planSummary.protein} carbsGrams={planSummary.carbs} fatGrams={planSummary.fat} />
+          </div>
         </div>
       </section>
 
@@ -308,8 +309,10 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="text-xs font-semibold text-ink-700 tabular-data">
-                  งบ {slot.targetCalories} kcal · P {slot.targetProteinGrams}g
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-ink-700 tabular-data" title="งบมื้อนี้">
+                  <Target className="w-3.5 h-3.5 text-ink-500" aria-hidden="true" />
+                  <span className="sr-only">งบ</span>
+                  {slot.targetCalories}
                 </span>
                 <button
                   type="button"
