@@ -18,6 +18,7 @@ import {
   TOP_STYLES,
 } from '../domain/avatarOptions';
 import { Avatar3DScene, resolveLook } from './Avatar3DScene';
+import { SegmentedTabs } from './SegmentedTabs';
 import { THAI_WEEKDAYS, WATER_GLASS_OPTIONS } from '../domain/appSettings';
 import { AppSettings, AvatarCustomization, UserProfile } from '../domain/types';
 
@@ -152,22 +153,7 @@ function CharacterEditor({
         />
       </div>
       <div className="min-w-0 space-y-2.5">
-        <div role="tablist" aria-label="ปรับแต่งตัวละคร" className="grid grid-cols-4 gap-1 p-1 rounded-full bg-ink-900/5">
-          {LOOK_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
-              className={`h-8 rounded-full text-xs font-bold transition-colors ${
-                tab === t.id ? 'bg-cream-50 text-ink-900 shadow-[0_1px_2px_rgba(42,34,27,0.12)]' : 'text-ink-500'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs options={LOOK_TABS} value={tab} onChange={setTab} ariaLabel="ปรับแต่งตัวละคร" size="sm" className="bg-ink-900/5" />
         <div role="tabpanel" className="space-y-3 max-h-[290px] overflow-y-auto pr-0.5">
           {tab === 'skin' && (
             <Swatches label="สีผิว" options={SKIN_TONES} value={look.skinTone} onPick={(hex) => onUpdateAvatar({ skinTone: hex })} />
@@ -280,7 +266,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"
-        className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-md app-sheet sm:rounded-3xl flex flex-col overflow-hidden"
+        className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-md app-sheet sm:rounded-3xl flex flex-col overflow-hidden animate-sheet-up"
       >
         <header
           className="px-4 pb-3 flex items-center justify-between glass-header"

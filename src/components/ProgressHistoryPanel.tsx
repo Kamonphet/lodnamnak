@@ -37,7 +37,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({ prog
       : '';
 
   return (
-    <div className="space-y-4 animate-list-item">
+    <div className="space-y-4 motion-stagger">
       {/* สรุปน้ำหนัก */}
       <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="progress-title">
         <div className="flex items-baseline justify-between gap-2">
@@ -51,7 +51,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({ prog
           <span className="ml-1.5 text-base font-semibold text-ink-500">กก.</span>
         </p>
         <div className="h-2 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
-          <div className="h-full rounded-full bg-sage-500 transition-[width] duration-500" style={{ width: `${progress.progressPercent}%` }} />
+          <div className="bar-fill h-full rounded-full bg-sage-500" style={{ width: `${progress.progressPercent}%` }} />
         </div>
         <div className="space-y-1.5 pt-1">
           <Row label="เริ่ม" value={`${progress.startWeightKg} กก.`} />
@@ -73,7 +73,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({ prog
         </div>
 
         <div className="relative w-full h-40">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible" aria-hidden="true">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible animate-reveal-x" aria-hidden="true">
             <line
               x1="0"
               y1={progress.targetYPct}
@@ -149,7 +149,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({ prog
             {progress.dailyHistory.map((item) => {
               const over = item.consumedCalories > item.targetCalories + 100;
               return (
-                <li key={item.dateKey} className="py-3 space-y-1 border-b border-line last:border-b-0">
+                <li key={item.dateKey} className="animate-row-in py-3 space-y-1 border-b border-line last:border-b-0">
                   <h3 className="text-sm font-bold text-ink-900">{formatDateLabel(item.dateKey)}</h3>
                   <Row
                     label="กิน"

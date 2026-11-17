@@ -1,6 +1,7 @@
 import React from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { ML_PER_GLASS } from '../domain/gamification';
+import { useCountUp } from '../hooks/useCountUp';
 
 interface WaterGlassTrackerProps {
   currentGlasses: number;
@@ -17,6 +18,7 @@ export const WaterGlassTracker: React.FC<WaterGlassTrackerProps> = ({
   mlPerGlass = ML_PER_GLASS,
 }) => {
   const goalMet = currentGlasses >= targetGlasses;
+  const shownMl = useCountUp(currentGlasses * mlPerGlass, 400);
   return (
     <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="water-title">
       <div className="flex items-baseline justify-between gap-2">
@@ -27,7 +29,7 @@ export const WaterGlassTracker: React.FC<WaterGlassTrackerProps> = ({
       </div>
       <div className="flex items-end justify-between gap-3">
         <p className="text-2xl font-bold text-ink-900 tabular-data">
-          {(currentGlasses * mlPerGlass).toLocaleString()}
+          {shownMl.toLocaleString()}
           <span className="ml-1 text-sm font-semibold text-ink-500">
             / {(targetGlasses * mlPerGlass).toLocaleString()} มล.
           </span>
@@ -54,12 +56,12 @@ export const WaterGlassTracker: React.FC<WaterGlassTrackerProps> = ({
       </div>
       <div className="flex gap-1" aria-hidden="true">
         {Array.from({ length: Math.max(targetGlasses, currentGlasses) }).map((_, i) => (
-          <span
-            key={i}
-            className={`h-2 flex-1 rounded-full transition-colors ${
-              i < currentGlasses ? (goalMet ? 'bg-sage-500' : 'bg-sky-500') : 'bg-cream-200'
-            }`}
-          />
+          <span key={i} className="h-2 flex-1 rounded-full bg-cream-200 overflow-hidden">
+            <span
+              className={`seg-fill block h-full rounded-full ${goalMet ? 'bg-sage-500' : 'bg-sky-500'}`}
+              style={{ transform: `scaleX(${i < currentGlasses ? 1 : 0})` }}
+            />
+          </span>
         ))}
       </div>
     </section>

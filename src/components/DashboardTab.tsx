@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, Pencil, ShieldAlert } from 'lucide-react';
 import {
   GamificationSummary,
@@ -15,6 +15,8 @@ import { AvatarExpression } from '../domain/avatarOptions';
 import { ToastMessage } from './LiquidToast';
 import { ProgressHistoryPanel } from './ProgressHistoryPanel';
 import { WaterGlassTracker } from './WaterGlassTracker';
+import { SegmentedTabs } from './SegmentedTabs';
+import { useCountUp } from '../hooks/useCountUp';
 
 /** สีหน้าตัวละครตามวันนี้: ทำครบทุกข้อ = ขี้เล่น, กินเกินงบมาก = ตกใจ, ค่ำแล้วยังไม่บันทึกอาหาร = เศร้า */
 export function pickExpression(
@@ -103,6 +105,21 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const isOver = remaining < 0;
   const usedPct = Math.min(100, Math.round((eaten / Math.max(1, target)) * 100));
   const proteinPct = Math.min(100, Math.round((dailyTotals.consumedProtein / Math.max(1, dailyTotals.targetProtein)) * 100));
+  const shownRemaining = useCountUp(Math.abs(remaining));
+  const shownProtein = useCountUp(dailyTotals.consumedProtein, 450, 1);
+
+  // ทำครบทุกข้อ: วงเช็กเด้งพร้อมวงแสงจาง ๆ ครั้งเดียวตอนเพิ่งครบ
+  const allDone = gamification.allQuestsCompletedToday;
+  const prevAllDone = useRef(allDone);
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    const was = prevAllDone.current;
+    prevAllDone.current = allDone;
+    if (!allDone || was) return;
+    setCelebrate(true);
+    const t = window.setTimeout(() => setCelebrate(false), 2200);
+    return () => window.clearTimeout(t);
+  }, [allDone]);
 
   const handleWeightSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,25 +203,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         expression={pickExpression(gamification.allQuestsCompletedToday, dailyTotals)}
       />
 
-      <div role="tablist" aria-label="หมวดหน้าแรก" className="grid grid-cols-3 gap-1 p-1 rounded-full bg-cream-200">
-        {SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            role="tab"
-            aria-selected={section === s.id}
-            onClick={() => setSection(s.id)}
-            className={`h-9 rounded-full text-sm font-semibold transition-colors ${
-              section === s.id ? 'bg-cream-50 text-ink-900 shadow-[0_1px_2px_rgba(42,34,27,0.12)]' : 'text-ink-500'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs options={SECTIONS} value={section} onChange={setSection} ariaLabel="หมวดหน้าแรก" />
 
       {section === 'today' && (
-        <div className="space-y-4 animate-list-item">
+        <div className="space-y-4 motion-stagger">
           {/* งบพลังงานแบบบัญชีรายวัน */}
           <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="budget-title">
             <div className="flex items-baseline justify-between gap-2">
@@ -214,12 +216,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               <span className="text-sm text-ink-500 tabular-data">{usedPct}%</span>
             </div>
             <p className={`text-[40px] leading-none font-bold tabular-data ${isOver ? 'text-peach-600' : 'text-ink-900'}`}>
-              {fmt(Math.abs(remaining))}
+              {fmt(shownRemaining)}
               <span className="ml-1.5 text-base font-semibold text-ink-500">kcal</span>
             </p>
             <div className="h-2 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
               <div
-                className={`h-full rounded-full transition-[width] duration-500 ${isOver ? 'bg-peach-500' : 'bg-sage-500'}`}
+                className={`bar-fill h-full rounded-full ${isOver ? 'bg-peach-500' : 'bg-sage-500'}`}
                 style={{ width: `${usedPct}%` }}
               />
             </div>
@@ -249,13 +251,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               </span>
             </div>
             <p className="text-2xl font-bold text-ink-900 tabular-data">
-              {dailyTotals.consumedProtein}
+              {shownProtein}
               <span className="ml-1 text-sm font-semibold text-ink-500">
                 / {metrics.proteinRangeGrams.min}–{metrics.proteinRangeGrams.max} g
               </span>
             </p>
             <div className="h-2 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
-              <div className="h-full rounded-full bg-peach-500 transition-[width] duration-500" style={{ width: `${proteinPct}%` }} />
+              <div className="bar-fill h-full rounded-full bg-peach-500" style={{ width: `${proteinPct}%` }} />
             </div>
           </section>
 
@@ -310,7 +312,17 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           <section className="rounded-3xl glass-card p-4" aria-labelledby="checklist-title">
             <div className="flex items-baseline justify-between gap-2 mb-1">
               <h2 id="checklist-title" className="text-sm font-semibold text-ink-900">สิ่งที่ทำวันนี้</h2>
-              <span className="text-sm text-ink-500 tabular-data">
+              <span className="inline-flex items-center gap-1.5 text-sm text-ink-500 tabular-data">
+                {allDone && (
+                  <span
+                    className={`w-5 h-5 rounded-full bg-sage-600 text-white inline-flex items-center justify-center ${
+                      celebrate ? 'animate-done-ring' : ''
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <Check className="w-3 h-3" strokeWidth={3} />
+                  </span>
+                )}
                 {gamification.todayCompletedQuests}/{gamification.totalDailyQuests}
               </span>
             </div>
@@ -318,15 +330,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               {gamification.quests.map((q) => (
                 <li key={q.id} className="py-2.5 flex items-center gap-3">
                   <span
-                    className={`w-6 h-6 rounded-full shrink-0 inline-flex items-center justify-center ${
-                      q.completed ? 'bg-sage-600 text-white' : 'border-[1.5px] border-ink-300'
+                    className={`w-6 h-6 rounded-full shrink-0 inline-flex items-center justify-center transition-colors duration-200 ${
+                      q.completed ? 'bg-sage-600 text-white animate-check-pop' : 'border-[1.5px] border-ink-300'
                     }`}
                     aria-hidden="true"
                   >
                     {q.completed && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
                   </span>
-                  <span className={`flex-1 min-w-0 text-sm ${q.completed ? 'text-ink-500 line-through decoration-ink-300' : 'text-ink-900'}`}>
-                    {q.title}
+                  <span className="flex-1 min-w-0 text-sm">
+                    <span className={`strike ${q.completed ? 'is-done text-ink-500' : 'text-ink-900'}`}>{q.title}</span>
                   </span>
                   <span className="text-xs text-ink-500 tabular-data shrink-0">{q.progressLabel}</span>
                   <span className="sr-only">{q.completed ? 'ทำแล้ว' : 'ยังไม่ทำ'}</span>
@@ -340,7 +352,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       {section === 'progress' && <ProgressHistoryPanel progress={progress} mlPerGlass={waterGlassMl} />}
 
       {section === 'plan' && (
-        <div className="space-y-4 animate-list-item">
+        <div className="space-y-4 motion-stagger">
           <section className="rounded-3xl glass-card p-4 space-y-3" aria-labelledby="pace-title">
             <h2 id="pace-title" className="text-sm font-semibold text-ink-900 tabular-data">
               จังหวะลดน้ำหนัก · {profile.currentWeightKg} → {profile.targetWeightKg} กก.

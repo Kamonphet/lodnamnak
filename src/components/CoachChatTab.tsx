@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, ShieldAlert } from 'lucide-react';
 import { buildContextualCoachSuggestions } from '../domain/coachAssistant';
 import { CoachChatMessage, UserProfile } from '../domain/types';
+import { prefersReducedMotion } from '../hooks/useCountUp';
+
+const TYPING_MS = 650;
 
 interface CoachChatTabProps {
   profile: UserProfile;
@@ -15,9 +18,32 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, o
 
   const suggestedPrompts = useMemo(() => buildContextualCoachSuggestions(profile), [profile]);
 
+  // ข้อความที่มีอยู่แล้วตอนเปิดหน้าไม่ต้องเล่น animation
+  const seenIds = useRef<Set<string>>(new Set(messages.map((m) => m.id)));
+  // คำตอบใหม่ของโค้ช: แสดงจุดกำลังพิมพ์สั้น ๆ ก่อนขึ้นข้อความ
+  const [typingFor, setTypingFor] = useState<string | null>(null);
+
+  const typedIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || last.sender !== 'coach' || seenIds.current.has(last.id) || typedIds.current.has(last.id)) return;
+    typedIds.current.add(last.id);
+    if (!prefersReducedMotion()) setTypingFor(last.id);
+  }, [messages]);
+
+  useEffect(() => {
+    if (!typingFor) return;
+    const t = window.setTimeout(() => setTypingFor(null), TYPING_MS);
+    return () => window.clearTimeout(t);
+  }, [typingFor]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]);
+  }, [messages.length, typingFor]);
+
+  const visibleMessages = typingFor ? messages.filter((m) => m.id !== typingFor) : messages;
+  const enter = (id: string) => (seenIds.current.has(id) ? '' : 'animate-bubble-in');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,10 +57,10 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, o
       <h1 className="text-[22px] font-bold text-ink-900 mb-3">โค้ช</h1>
 
       <div className="flex-1 overflow-y-auto space-y-3 pb-2 pr-1" role="log" aria-label="บทสนทนากับโค้ช">
-        {messages.map((msg) => {
+        {visibleMessages.map((msg) => {
           if (msg.sender === 'user') {
             return (
-              <div key={msg.id} className="flex justify-end">
+              <div key={msg.id} className={`flex justify-end origin-bottom-right ${enter(msg.id)}`}>
                 <p className="max-w-[82%] rounded-3xl rounded-br-md bg-sage-600 text-white px-3.5 py-2.5 text-[15px] leading-relaxed whitespace-pre-line">
                   {msg.text}
                 </p>
@@ -42,7 +68,7 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, o
             );
           }
           return (
-            <div key={msg.id} className="flex justify-start">
+            <div key={msg.id} className={`flex justify-start origin-bottom-left ${enter(msg.id)}`}>
               <div
                 className={`max-w-[88%] rounded-3xl rounded-bl-md px-3.5 py-2.5 space-y-1 ${
                   msg.safetyTriggered ? 'glass-alert-critical text-berry-800' : 'glass-card text-ink-900'
@@ -63,6 +89,15 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, o
             </div>
           );
         })}
+        {typingFor && (
+          <div className="flex justify-start animate-bubble-in" role="status" aria-label="โค้ชกำลังพิมพ์">
+            <div className="glass-card rounded-3xl rounded-bl-md px-4 py-3.5 flex gap-1" aria-hidden="true">
+              <span className="typing-dot w-1.5 h-1.5 rounded-full bg-ink-500" />
+              <span className="typing-dot w-1.5 h-1.5 rounded-full bg-ink-500" />
+              <span className="typing-dot w-1.5 h-1.5 rounded-full bg-ink-500" />
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 

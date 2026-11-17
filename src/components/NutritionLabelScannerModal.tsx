@@ -244,7 +244,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
   // Portal ไปที่ body เพื่อไม่ให้ parent ที่มี transform/backdrop-filter ดึงตำแหน่ง fixed ไปผิดที่ และให้อยู่เหนือแถบเมนู
   return createPortal(
     <div className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center sm:p-3 glass-modal-backdrop animate-backdrop-in">
-      <div className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-lg app-sheet sm:rounded-3xl overflow-hidden flex flex-col sm:border sm:border-line">
+      <div className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-lg app-sheet sm:rounded-3xl overflow-hidden flex flex-col sm:border sm:border-line animate-sheet-up">
         {/* Header */}
         <div
           className="px-4 pb-3 pt-3 glass-header flex items-center justify-between"

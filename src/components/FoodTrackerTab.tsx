@@ -34,6 +34,8 @@ import { NutritionLabelScannerModal } from './NutritionLabelScannerModal';
 import { ConfirmDialogState } from './ConfirmDialog';
 import { ToastMessage } from './LiquidToast';
 import { MealDesignerPanel } from './MealDesignerPanel';
+import { SegmentedTabs } from './SegmentedTabs';
+import { useCountUp } from '../hooks/useCountUp';
 
 interface FoodTrackerTabProps {
   profile: UserProfile;
@@ -331,6 +333,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
   };
 
   const isOver = dailyTotals.remainingCalories < 0;
+  const shownRemaining = useCountUp(Math.abs(dailyTotals.remainingCalories));
 
   return (
     <div className="space-y-4">
@@ -347,7 +350,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
           </span>
         </div>
         <p className={`text-[32px] leading-none font-bold tabular-data ${isOver ? 'text-peach-600' : 'text-ink-900'}`}>
-          {Math.abs(dailyTotals.remainingCalories).toLocaleString()}
+          {shownRemaining.toLocaleString()}
           <span className="ml-1.5 text-base font-semibold text-ink-500">kcal</span>
         </p>
         <div className="space-y-2 pt-1">
@@ -366,7 +369,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
               </div>
               <div className="h-1.5 rounded-full bg-cream-200 overflow-hidden" aria-hidden="true">
                 <div
-                  className={`h-full rounded-full ${m.bar}`}
+                  className={`bar-fill h-full rounded-full ${m.bar}`}
                   style={{ width: `${Math.min(100, Math.round((m.value / Math.max(1, m.target)) * 100))}%` }}
                 />
               </div>
@@ -375,23 +378,15 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
         </div>
       </section>
 
-      <div role="tablist" aria-label="โหมดหน้าอาหาร" className="grid grid-cols-2 gap-1 p-1 rounded-full bg-cream-200">
-        {([
-          ['log', 'บันทึกที่กิน'],
-          ['designer', 'วางแผนมื้อ'],
-        ] as const).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={subView === id}
-            onClick={() => setSubView(id)}
-            className={`h-9 rounded-full text-sm font-semibold transition-colors ${subView === id ? 'bg-cream-50 text-ink-900 shadow-[0_1px_2px_rgba(42,34,27,0.12)]' : 'text-ink-500'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs
+        options={[
+          { id: 'log', label: 'บันทึกที่กิน' },
+          { id: 'designer', label: 'วางแผนมื้อ' },
+        ] as const}
+        value={subView}
+        onChange={setSubView}
+        ariaLabel="โหมดหน้าอาหาร"
+      />
 
       {subView === 'designer' ? (
         <div key="designer" className="animate-page-right">
@@ -411,7 +406,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
           />
         </div>
       ) : (
-        <div key="log" className="space-y-4 animate-page-left">
+        <div key="log" className="space-y-4 motion-stagger">
           {/* เพิ่มรายการอาหาร */}
           <section className="rounded-3xl glass-card p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
@@ -782,7 +777,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
           <>
             <ul>
               {todayFoods.map((item) => (
-                <li key={item.id} className="py-2.5 flex items-start gap-2 border-b border-line last:border-b-0">
+                <li key={item.id} className="animate-row-in py-2.5 flex items-start gap-2 border-b border-line last:border-b-0">
                   <div className="flex-1 min-w-0">
                     <div className="ledger-row text-sm">
                       <span className="font-semibold text-ink-900 truncate">{item.normalizedName}</span>

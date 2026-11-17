@@ -581,7 +581,14 @@ export const App: React.FC = () => {
             aria-label="เมนูหลัก"
             className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30 glass-dock safe-bottom"
           >
-            <div className="grid grid-cols-4">
+            <div className="relative grid grid-cols-4">
+              <span
+                aria-hidden="true"
+                className="nav-indicator absolute top-0 left-0 w-1/4 h-0.5 px-6"
+                style={{ transform: `translateX(${Math.max(0, NAV_ITEMS.findIndex((n) => n.id === activeTab)) * 100}%)` }}
+              >
+                <span className="block h-full rounded-full bg-sage-600" />
+              </span>
               {NAV_ITEMS.map(({ id, label, Icon }) => {
                 const active = activeTab === id;
                 return (
@@ -594,8 +601,7 @@ export const App: React.FC = () => {
                       active ? 'text-sage-700 font-bold' : 'text-ink-500 font-medium'
                     }`}
                   >
-                    {active && <span aria-hidden="true" className="absolute top-0 inset-x-6 h-0.5 rounded-full bg-sage-600" />}
-                    <Icon className="w-[22px] h-[22px]" />
+                    <Icon className={`nav-icon w-[22px] h-[22px] ${active ? 'is-active' : ''}`} />
                     <span>{label}</span>
                   </button>
                 );

@@ -159,7 +159,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 motion-stagger">
       <h1 className="text-[22px] font-bold text-ink-900">ออกกำลังกาย</h1>
 
       {/* คำนวณและบันทึกการออกกำลังกาย */}
@@ -322,7 +322,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
             <h3 className="text-sm font-semibold text-ink-900 mb-1">วันนี้</h3>
             <ul>
               {todayExercises.map((ex) => (
-                <li key={ex.id} className="py-2 flex items-start gap-2 border-b border-line last:border-b-0">
+                <li key={ex.id} className="animate-row-in py-2 flex items-start gap-2 border-b border-line last:border-b-0">
                   <div className="flex-1 min-w-0">
                     <div className="ledger-row text-sm">
                       <span className="font-semibold text-ink-900 truncate">{ex.exerciseLabel}</span>
