@@ -71,9 +71,9 @@ function Swatches({
   onPick: (hex: string) => void;
 }) {
   return (
-    <div className="py-2.5 space-y-2">
-      <span className="text-sm text-ink-900">{label}</span>
-      <div className="flex flex-wrap gap-2">
+    <div className="space-y-1.5">
+      <span className="text-xs font-semibold text-ink-500">{label}</span>
+      <div className="flex flex-wrap gap-1.5">
         {options.map((c) => {
           const active = value.toLowerCase() === c.hex;
           return (
@@ -83,8 +83,8 @@ function Swatches({
               onClick={() => onPick(c.hex)}
               aria-label={`${label} ${c.label}`}
               aria-pressed={active}
-              className={`w-8 h-8 rounded-full border-2 border-white shadow transition-transform ${
-                active ? 'scale-110 ring-2 ring-ink-900 ring-offset-2' : ''
+              className={`w-7 h-7 rounded-full border-2 border-white shadow transition-transform ${
+                active ? 'scale-110 ring-2 ring-ink-900 ring-offset-1' : ''
               }`}
               style={{ backgroundColor: c.hex }}
             />
@@ -107,8 +107,8 @@ function Chips<T extends string>({
   onPick: (id: T) => void;
 }) {
   return (
-    <div className="py-2.5 space-y-2">
-      <span className="text-sm text-ink-900">{label}</span>
+    <div className="space-y-1.5">
+      <span className="text-xs font-semibold text-ink-500">{label}</span>
       <div className="flex flex-wrap gap-1.5">
         {options.map((o) => (
           <button
@@ -116,13 +116,106 @@ function Chips<T extends string>({
             type="button"
             onClick={() => onPick(o.id)}
             aria-pressed={value === o.id}
-            className={`tactile-btn h-9 px-3 rounded-full text-xs font-bold ${
+            className={`tactile-btn h-8 px-2.5 rounded-full text-[11px] font-bold ${
               value === o.id ? 'glass-btn-primary' : 'glass-pill text-ink-900'
             }`}
           >
             {o.label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+type LookTab = 'skin' | 'hair' | 'top' | 'bottom';
+const LOOK_TABS: { id: LookTab; label: string }[] = [
+  { id: 'skin', label: 'ผิว' },
+  { id: 'hair', label: 'ผม' },
+  { id: 'top', label: 'เสื้อ' },
+  { id: 'bottom', label: 'ล่าง' },
+];
+
+/** ตัวละครอยู่ซ้าย ตัวเลือกอยู่ขวา แยกเป็นหมวด เห็นผลทันทีโดยไม่ต้องเลื่อน */
+function CharacterEditor({
+  profile,
+  lowPower,
+  onUpdateAvatar,
+}: {
+  profile: UserProfile;
+  lowPower: boolean;
+  onUpdateAvatar: (patch: Partial<AvatarCustomization>) => void;
+}) {
+  const [tab, setTab] = React.useState<LookTab>('hair');
+  const look = resolveLook(profile.gender, profile.avatarStyle);
+  return (
+    <div className="pt-2 grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-2.5 items-start">
+      <div className="sticky top-0 rounded-2xl bg-white/50 overflow-hidden">
+        <Avatar3DScene
+          compact
+          gender={profile.gender}
+          age={profile.age}
+          heightCm={profile.heightCm}
+          currentWeightKg={profile.currentWeightKg}
+          targetWeightKg={profile.targetWeightKg}
+          primaryGoal={profile.primaryGoal}
+          avatarStyle={profile.avatarStyle}
+          equippedAccessory={profile.equippedAccessory}
+          expression="curious"
+          lowPower={lowPower}
+        />
+      </div>
+      <div className="min-w-0 space-y-2.5">
+        <div role="tablist" aria-label="ปรับแต่งตัวละคร" className="grid grid-cols-4 gap-1 p-1 rounded-full bg-ink-900/5">
+          {LOOK_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`h-8 rounded-full text-xs font-bold transition-colors ${
+                tab === t.id ? 'bg-white text-ink-900 shadow' : 'text-ink-500'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div role="tabpanel" className="space-y-3 max-h-[290px] overflow-y-auto pr-0.5">
+          {tab === 'skin' && (
+            <Swatches label="สีผิว" options={SKIN_TONES} value={look.skinTone} onPick={(hex) => onUpdateAvatar({ skinTone: hex })} />
+          )}
+          {tab === 'hair' && (
+            <>
+              <Chips
+                label="ชาย"
+                options={HAIR_STYLES.filter((h) => h.group === 'boy')}
+                value={look.hairStyle}
+                onPick={(id) => onUpdateAvatar({ hairStyle: id })}
+              />
+              <Chips
+                label="หญิง"
+                options={HAIR_STYLES.filter((h) => h.group === 'girl')}
+                value={look.hairStyle}
+                onPick={(id) => onUpdateAvatar({ hairStyle: id })}
+              />
+              <Swatches label="สีผม" options={HAIR_COLORS} value={look.hairColor} onPick={(hex) => onUpdateAvatar({ hairColor: hex })} />
+            </>
+          )}
+          {tab === 'top' && (
+            <>
+              <Chips label="แบบ" options={TOP_STYLES} value={look.top} onPick={(id) => onUpdateAvatar({ top: id })} />
+              <Swatches label="สี" options={CLOTH_COLORS} value={look.topColor} onPick={(hex) => onUpdateAvatar({ shirtColor: hex })} />
+            </>
+          )}
+          {tab === 'bottom' && (
+            <>
+              <Chips label="แบบ" options={BOTTOM_STYLES} value={look.bottom} onPick={(id) => onUpdateAvatar({ bottom: id })} />
+              <Swatches label="สี" options={CLOTH_COLORS} value={look.bottomColor} onPick={(hex) => onUpdateAvatar({ bottomColor: hex })} />
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -190,7 +283,6 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
   onDeleteProfile,
 }) => {
   if (!open) return null;
-  const look = resolveLook(profile.gender, profile.avatarStyle);
   const version = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '';
 
   return createPortal(
@@ -226,44 +318,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
           <Section icon={<Palette className="w-4 h-4" />} title="ตัวละคร">
-            <div className="py-2">
-              <Avatar3DScene
-                compact
-                gender={profile.gender}
-                age={profile.age}
-                heightCm={profile.heightCm}
-                currentWeightKg={profile.currentWeightKg}
-                targetWeightKg={profile.targetWeightKg}
-                primaryGoal={profile.primaryGoal}
-                avatarStyle={profile.avatarStyle}
-                equippedAccessory={profile.equippedAccessory}
-                expression="curious"
-                lowPower={settings.lowPower3d}
-              />
-            </div>
-            <Swatches label="สีผิว" options={SKIN_TONES} value={look.skinTone} onPick={(hex) => onUpdateAvatar({ skinTone: hex })} />
-            <Chips
-              label="ทรงผมชาย"
-              options={HAIR_STYLES.filter((h) => h.group === 'boy')}
-              value={look.hairStyle}
-              onPick={(id) => onUpdateAvatar({ hairStyle: id })}
-            />
-            <Chips
-              label="ทรงผมหญิง"
-              options={HAIR_STYLES.filter((h) => h.group === 'girl')}
-              value={look.hairStyle}
-              onPick={(id) => onUpdateAvatar({ hairStyle: id })}
-            />
-            <Swatches label="สีผม" options={HAIR_COLORS} value={look.hairColor} onPick={(hex) => onUpdateAvatar({ hairColor: hex })} />
-            <Chips label="เสื้อ" options={TOP_STYLES} value={look.top} onPick={(id) => onUpdateAvatar({ top: id })} />
-            <Swatches label="สีเสื้อ" options={CLOTH_COLORS} value={look.topColor} onPick={(hex) => onUpdateAvatar({ shirtColor: hex })} />
-            <Chips label="กางเกง / กระโปรง" options={BOTTOM_STYLES} value={look.bottom} onPick={(id) => onUpdateAvatar({ bottom: id })} />
-            <Swatches
-              label="สีกางเกง / กระโปรง"
-              options={CLOTH_COLORS}
-              value={look.bottomColor}
-              onPick={(hex) => onUpdateAvatar({ bottomColor: hex })}
-            />
+            <CharacterEditor profile={profile} lowPower={settings.lowPower3d} onUpdateAvatar={onUpdateAvatar} />
           </Section>
 
           <Section icon={<Bell className="w-4 h-4" />} title="การแจ้งเตือน">

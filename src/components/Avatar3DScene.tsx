@@ -164,8 +164,12 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     const height = container.clientHeight || 212;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30, width / height, 0.05, 20);
-    camera.position.set(0, 0.62, 2.55);
-    camera.lookAt(0, 0.47, 0);
+    // ช่องแคบ (เช่น หน้าตั้งค่า) ถอยกล้องให้เห็นทั้งตัวและแท่นยืน
+    const frame = (aspect: number) => {
+      camera.position.set(0, 0.62, 2.55 * Math.max(1, 0.72 / aspect));
+      camera.lookAt(0, 0.47, 0);
+    };
+    frame(width / height);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
@@ -282,6 +286,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
       const w = mountRef.current.clientWidth || 320;
       const h = mountRef.current.clientHeight || 212;
       camera.aspect = w / h;
+      frame(w / h);
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
@@ -357,7 +362,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     <div className="relative">
       <div
         ref={mountRef}
-        className={`w-full ${compact ? 'h-[220px]' : 'h-[240px]'} touch-pan-y cursor-grab active:cursor-grabbing select-none`}
+        className={`w-full ${compact ? 'h-[340px]' : 'h-[240px]'} touch-pan-y cursor-grab active:cursor-grabbing select-none`}
         aria-label="ตัวละคร 3 มิติ"
       />
       {loadState !== 'ready' && (

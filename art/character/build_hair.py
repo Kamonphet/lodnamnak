@@ -99,45 +99,155 @@ def hairline_short(front=0.62, side=1.4, back=2.3):
 
 
 # ---------- ทรงผมชาย ----------
+# จุดอ้างอิงบนหัว: คิ้ว z≈0.84 (phi≈1.27 ด้านหน้า), หู z 0.74-0.84 ที่ theta≈1.41-1.85
+def _interp(points, x):
+    """เส้นโค้งเรียบผ่านจุด (x, y) เรียงตาม x (cosine interpolation)"""
+    if x <= points[0][0]:
+        return points[0][1]
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        if x <= x1:
+            t = (x - x0) / (x1 - x0)
+            t = (1 - math.cos(math.pi * t)) / 2
+            return y0 + (y1 - y0) * t
+    return points[-1][1]
+
+
+def hairline_boy(front=1.02, temple=1.2, sideburn=1.3, over_ear=1.18, nape=2.12):
+    """ไรผมผู้ชาย: หน้าผากเหนือคิ้ว จอนหน้าหู โค้งข้ามหู ท้ายทอยโค้งมน (ไม่แหลม)"""
+    pts = [
+        (0.0, front),
+        (0.55, front + 0.05),
+        (0.9, temple),
+        (1.22, sideburn),
+        (1.45, over_ear),
+        (1.85, over_ear),
+        (2.35, nape - 0.3),
+        (2.75, nape),
+        (math.pi, nape),
+    ]
+    return lambda theta: _interp(pts, abs(theta))
+
+
+def volume_cap(bm, hairline, edge=0.008, volume=0.03, front_lift=0.0, part=None, thickness=0.02):
+    """หมวกผมที่มีวอลุ่ม: แนบหัวที่ขอบไรผม แล้วค่อย ๆ หนาขึ้นไปทางกระหม่อม
+    front_lift: เสริมความฟูด้านหน้าบน, part: (theta, width) ร่องแสกที่ยุบลง"""
+    tmp = bmesh.new()
+    ellipsoid(tmp, HEAD_C, HEAD_R, segs=96, rings=56)
+
+    def extra_at(theta, phi):
+        depth = max(0.0, min(1.0, (hairline(theta) - phi) / 0.55))
+        e = edge + volume * depth ** 0.6
+        e += front_lift * max(0.0, math.cos(theta)) ** 2 * math.exp(-((phi - 0.75) / 0.35) ** 2)
+        if part is not None:
+            pth, pw = part
+            # ร่องแสก: จางลงใกล้กระหม่อม (theta ไม่นิ่งที่ขั้ว) และก่อนถึงหน้าผาก
+            fade = min(1.0, max(0.0, (phi - 0.25) / 0.2)) * min(1.0, max(0.0, (1.15 - phi) / 0.15))
+            e -= volume * 0.75 * math.exp(-(((theta - pth) / pw) ** 2)) * fade
+        return max(edge, e)
+
+    kill = []
+    for v in tmp.verts:
+        d = v.co - HEAD_C
+        d = Vector((d.x / HEAD_R.x, d.y / HEAD_R.y, d.z / HEAD_R.z))
+        phi = math.acos(max(-1, min(1, d.z)))
+        theta = math.atan2(d.x, -d.y)
+        if phi > hairline(theta):
+            kill.append(v)
+            continue
+        v.co, _ = head_point(theta, phi, extra_at(theta, phi))
+    bmesh.ops.delete(tmp, geom=kill, context="VERTS")
+    for v in tmp.verts:
+        if v.is_boundary:
+            d = v.co - HEAD_C
+            theta = math.atan2(d.x / HEAD_R.x, -d.y / HEAD_R.y)
+            ph = hairline(theta)
+            v.co, _ = head_point(theta, ph, extra_at(theta, ph))
+    # เปลือกด้านใน: ดึงเข้าหาศูนย์กลางหัวตรง ๆ แล้วเย็บขอบ (bmesh solidify พุ่งออกที่มุมแหลมของจอน)
+    outer = list(tmp.verts)
+    faces = list(tmp.faces)
+    edges = [e for e in tmp.edges if e.is_boundary]
+    inner = {}
+    for v in outer:
+        r = v.co - HEAD_C
+        inner[v] = tmp.verts.new(HEAD_C + r * max(0.5, 1 - thickness / r.length))
+    for f in faces:
+        tmp.faces.new([inner[v] for v in reversed(f.verts)])
+    for e in edges:
+        a, b = e.verts
+        tmp.faces.new((a, b, inner[b], inner[a]))
+    me = bpy.data.meshes.new("tmp_cap")
+    tmp.to_mesh(me)
+    tmp.free()
+    bm.from_mesh(me)
+    bpy.data.meshes.remove(me)
+    return extra_at
+
+
+def lock(bm, theta, phi0, phi1, extra0, extra1, r0, r1, drift=0.0, out=0.0, steps=5):
+    """ปอยผมเรียวจาก (theta, phi0) ไหลลงตามผิวหัวถึง phi1 ปลายเบนไปข้าง drift (เรเดียน) และยื่นออก out"""
+    pts = []
+    for i in range(steps + 1):
+        t = i / steps
+        p, d = head_point(theta + drift * t * t, phi0 + (phi1 - phi0) * t, extra0 + (extra1 - extra0) * t)
+        pts.append(p + d * out * t * t)
+    tube(bm, pts, r0, r1, sub=3)
+
+
 def casual(bm):
-    cap(bm, hairline_short())
-    # ปอยหน้าม้าสั้นปัดไปข้าง
-    for i in range(7):
-        th = -0.75 + i * 0.25
-        p, d = head_point(th, 0.62, 0.01)
-        ellipsoid(bm, p + Vector((0.012, 0, -0.01)), (0.032, 0.024, 0.03))
-    for i in range(10):
-        th = i * 2 * math.pi / 10
-        p, d = head_point(th, 0.35, 0.014)
-        ellipsoid(bm, p, (0.05, 0.05, 0.035))
+    """สั้นธรรมชาติ: ฟูด้านบน หน้าม้าปอยหนาปัดเฉียงลงเหนือคิ้ว มีจุกชี้ที่กระหม่อม"""
+    hl = hairline_boy(front=1.0)
+    extra = volume_cap(bm, hl, volume=0.034, front_lift=0.018)
+    # หน้าม้าเป็นปอย ๆ ปัดเฉียงไปทางซ้ายของตัวละคร
+    for i, th in enumerate((-0.7, -0.42, -0.14, 0.14, 0.42, 0.7)):
+        top = 0.62 + 0.05 * abs(th)
+        lock(bm, th, top, 1.12 + 0.05 * abs(th), extra(th, top) - 0.006, 0.012, 0.034, 0.012, drift=0.22, out=0.01)
+    # จุกที่กระหม่อมด้านหลัง
+    for th, ln in ((math.pi - 0.2, 0.045), (math.pi + 0.2, 0.04)):
+        base, d = head_point(th, 0.4, extra(th, 0.4) - 0.012)
+        cone(bm, base, base + (d + Vector((0, 0.6, 0.2))).normalized() * ln, 0.03)
 
 
 def spiky(bm):
-    cap(bm, hairline_short(front=0.6))
+    """เซ็ตตั้ง: ข้างสั้นแนบ ด้านบนเป็นปลายแหลมหนา ๆ ชี้ขึ้นและเฉียงไปข้างหน้าเล็กน้อย"""
+    hl = hairline_boy(front=1.05, temple=1.15, sideburn=1.4)
+    extra = volume_cap(bm, hl, volume=0.018)
     rnd = random.Random(3)
-    for ring, (phi, count, length) in enumerate(((0.15, 5, 0.06), (0.45, 9, 0.058), (0.75, 11, 0.045), (1.05, 12, 0.035))):
-        for i in range(count):
-            th = i * 2 * math.pi / count + ring * 0.3
-            if phi > 0.6 and math.cos(th) > 0.6:
-                # หน้าม้า: แหลมชี้ขึ้นไปทางหน้า
-                base, d = head_point(th, phi - 0.08, 0.004)
-                tip = base + Vector((0, -0.03, 0.05)) + d * 0.02
-            else:
-                base, d = head_point(th, phi, 0.004)
-                tip = base + (d + Vector((0, 0.25, 0.6))).normalized() * length * (0.85 + 0.3 * rnd.random())
-            cone(bm, base, tip, 0.036)
+    golden = math.pi * (3 - math.sqrt(5))
+    n = 90
+    for i in range(n):
+        z = 1 - 2 * (i + 0.5) / n
+        phi = math.acos(z) * 0.72  # เฉพาะด้านบนหัว (phi < ~1.15)
+        th = (i * golden) % (2 * math.pi) - math.pi
+        if phi > hl(th) - 0.18:
+            continue
+        base, d = head_point(th, phi, extra(th, phi) - 0.014)
+        # ด้านหน้าชี้ขึ้นเฉียงหน้า ด้านหลังชี้ขึ้นเฉียงหลัง
+        lean = Vector((0, -0.25 * math.cos(th), 1.0))
+        direction = (d * 0.8 + lean).normalized()
+        length = (0.1 - 0.035 * phi) * (0.85 + 0.3 * rnd.random())
+        cone(bm, base, base + direction * length, 0.036 + 0.01 * rnd.random(), segs=8)
 
 
 def sidepart(bm):
-    cap(bm, hairline_short(front=0.66))
-    # ผมด้านบนปัดจากรอยแสกขวาไปซ้าย เป็นลอนนูน
-    for i in range(9):
-        t = i / 8
-        th = -0.6 + 1.3 * t
-        p, d = head_point(th, 0.55 - 0.15 * math.sin(math.pi * t), 0.012)
-        ellipsoid(bm, p + Vector((0, 0, 0.012)), (0.05, 0.045, 0.03))
-    p, d = head_point(0.35, 0.62, 0.02)
-    ellipsoid(bm, p + Vector((0.0, 0.0, 0.01)), (0.075, 0.05, 0.035), rot=Matrix.Rotation(0.3, 3, "Y"))
+    """ปัดข้างเรียบร้อย: แสกด้านขวาของตัวละคร ผมด้านบนกวาดเป็นโค้งฟูไปทางซ้าย"""
+    part_theta = -0.55
+    hl = hairline_boy(front=1.03)
+    extra = volume_cap(bm, hl, volume=0.03, front_lift=0.022, part=(part_theta, 0.06))
+    # ลอนโค้งหน้าผาก: เริ่มจากแนวแสก กวาดข้ามหน้าผากไปอีกข้าง
+    for k in range(5):
+        phi0 = 0.45 + 0.1 * k
+        th0 = part_theta + 0.08
+        pts = []
+        for i in range(7):
+            t = i / 6
+            th = th0 + (1.25 - 0.1 * k) * t
+            ph = phi0 + (0.25 + 0.04 * k) * math.sin(math.pi * t * 0.9)
+            p, d = head_point(th, ph, extra(th, ph) - 0.004 + 0.012 * math.sin(math.pi * t))
+            pts.append(p)
+        tube(bm, pts, 0.03, 0.022, sub=3)
+    # ด้านแสกที่สั้นกว่า หวีเรียบลงไปทางขวา
+    for k in range(3):
+        lock(bm, part_theta - 0.1, 0.55 + 0.12 * k, 1.0 + 0.04 * k, extra(part_theta - 0.1, 0.55) - 0.006, 0.01, 0.026, 0.012, drift=-0.35)
 
 
 def curls(bm, hairline, size=0.03, extra=0.016, seed=5, density=1.0):
@@ -156,9 +266,22 @@ def curls(bm, hairline, size=0.03, extra=0.016, seed=5, density=1.0):
 
 
 def curly_short(bm):
-    hl = hairline_short(front=0.62)
-    cap(bm, hl)
-    curls(bm, hl, size=0.034, extra=0.02, density=1.2)
+    """หยิกธรรมชาติ: ลอนเล็กแน่นทั้งหัว ฟูด้านบน ข้างสั้น ลอนหน้าผากตกลงมาเล็กน้อย"""
+    hl = hairline_boy(front=0.98, temple=1.18, sideburn=1.38)
+    extra = volume_cap(bm, hl, volume=0.022, edge=0.006)
+    rnd = random.Random(5)
+    golden = math.pi * (3 - math.sqrt(5))
+    n = 300
+    for i in range(n):
+        z = 1 - 2 * (i + 0.5) / n
+        phi = math.acos(z)
+        th = (i * golden) % (2 * math.pi) - math.pi
+        if phi > hl(th) - 0.04:
+            continue
+        top = max(0.0, math.cos(phi))  # ลอนด้านบนใหญ่และยื่นกว่าด้านข้าง
+        p, d = head_point(th, phi, extra(th, phi) + 0.008 + 0.016 * top)
+        r = (0.023 + 0.01 * top) * (0.85 + 0.3 * rnd.random())
+        ellipsoid(bm, p, (r, r, r), segs=10, rings=6)
 
 
 # ---------- ทรงผมหญิง ----------

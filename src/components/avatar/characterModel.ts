@@ -150,7 +150,10 @@ export class CharacterController {
     this.mat('LN_Cloth_TopAccent')?.color.set(accent);
     this.mat('LN_Cloth_BottomAccent')?.color.set(contrastAccent(look.bottomColor));
     for (const mesh of this.meshes) {
-      const n = mesh.name;
+      // A garment with two materials loads as a group (LN_Top_polo) holding
+      // one mesh per material (LN_Top_polo003, LN_Top_polo003_1).
+      const parent = mesh.parent?.name ?? '';
+      const n = /^LN_(Top|Bottom|Hair)_/.test(parent) ? parent : mesh.name;
       const base = n.split('__')[0];
       if (n.startsWith('LN_Hair_')) mesh.visible = n === `LN_Hair_${look.hairStyle}`;
       else if (n.startsWith('LN_Top_')) mesh.visible = base === `LN_Top_${look.top}`;
