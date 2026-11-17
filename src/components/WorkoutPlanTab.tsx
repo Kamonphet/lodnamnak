@@ -366,7 +366,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
         </form>
 
         {todayExercises.length > 0 && (
-          <div className="pt-2 border-t border-white/60 divide-y divide-white/60">
+          <div className="pt-2 border-t border-line divide-y divide-line">
             {todayExercises.map((ex) => {
               const visual = getExerciseVisual(ex.exerciseType, ex.exerciseLabel);
               return (
@@ -440,7 +440,7 @@ export const WorkoutPlanTab: React.FC<WorkoutPlanTabProps> = ({
           </div>
         </div>
 
-        <div className="divide-y divide-white/60">
+        <div className="divide-y divide-line">
           {weeklySchedule.map((day) => {
             const isRecovery = day.focusType === 'recovery';
             const isDone = Boolean(checkedDays[day.dayName]);

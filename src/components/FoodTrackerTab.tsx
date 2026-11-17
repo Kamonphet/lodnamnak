@@ -632,24 +632,24 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
                                       <span
                                         className={`rounded-full px-2 py-0.5 font-bold uppercase ${
                                           NUTRI_BADGE_CLASS[item.nutriScore] ??
-                                          'bg-white/70 text-ink-900'
+                                          'bg-cream-200 text-ink-900'
                                         }`}
                                       >
                                         Nutri-Score {item.nutriScore}
                                       </span>
                                     )}
                                     {item.novaGroup && (
-                                      <span className="rounded-full bg-white/70 px-2 py-0.5 font-semibold text-ink-700">
+                                      <span className="rounded-full bg-cream-200 px-2 py-0.5 font-semibold text-ink-700">
                                         NOVA {item.novaGroup}
                                       </span>
                                     )}
                                     {scaled.sugarGrams !== undefined && (
-                                      <span className="rounded-full bg-white/70 px-2 py-0.5 font-semibold text-ink-700">
+                                      <span className="rounded-full bg-cream-200 px-2 py-0.5 font-semibold text-ink-700">
                                         น้ำตาล {scaled.sugarGrams}g
                                       </span>
                                     )}
                                     {scaled.sodiumMg !== undefined && (
-                                      <span className="rounded-full bg-white/70 px-2 py-0.5 font-semibold text-ink-700">
+                                      <span className="rounded-full bg-cream-200 px-2 py-0.5 font-semibold text-ink-700">
                                         โซเดียม {scaled.sodiumMg}mg
                                       </span>
                                     )}
@@ -818,7 +818,7 @@ export const FoodTrackerTab: React.FC<FoodTrackerTabProps> = ({
         {todayFoods.length === 0 ? (
           <p className="text-sm text-ink-700 py-4 text-center">ยังไม่มีรายการวันนี้</p>
         ) : (
-          <div className="divide-y divide-white/60">
+          <div className="divide-y divide-line">
             {todayFoods.map((item) => (
               <div
                 key={item.id}

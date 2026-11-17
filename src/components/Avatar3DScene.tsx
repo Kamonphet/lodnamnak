@@ -5,7 +5,6 @@ import { defaultLook, AvatarExpression, AvatarPose } from '../domain/avatarOptio
 import { EXERCISE_CATALOG } from '../domain/exercisePlanner';
 import { interpretBmi } from '../domain/healthCalculator';
 import {
-  AvatarAccessoryId,
   AvatarCustomization,
   ExerciseType,
   Gender,
@@ -28,7 +27,6 @@ interface Avatar3DSceneProps {
   regularExercises?: ExerciseType[];
   customExercises?: string[];
   avatarStyle?: AvatarCustomization;
-  equippedAccessory?: AvatarAccessoryId;
   defaultPose?: AvatarPose;
   /** สีหน้าตัวละคร (แอปเลือกตามสถานะของวันนั้น) */
   expression?: AvatarExpression;
@@ -101,7 +99,6 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
   regularExercises = [],
   customExercises = [],
   avatarStyle,
-  equippedAccessory = 'none',
   defaultPose = 'idle',
   expression = 'happy',
   lowPower = false,
@@ -147,8 +144,8 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
   const look = resolveLook(gender, avatarStyle);
 
   // ค่าที่ลูปแอนิเมชันอ่านทุกเฟรม
-  const liveRef = useRef({ pose, bmi: blendedBmi, gender, look, expression, equippedAccessory, heightCm: effectiveHeightCm });
-  liveRef.current = { pose, bmi: blendedBmi, gender, look, expression, equippedAccessory, heightCm: effectiveHeightCm };
+  const liveRef = useRef({ pose, bmi: blendedBmi, gender, look, expression, heightCm: effectiveHeightCm });
+  liveRef.current = { pose, bmi: blendedBmi, gender, look, expression, heightCm: effectiveHeightCm };
   const rotationTargetRef = useRef(0.35);
   const currentRotationRef = useRef(0.35);
   const autoSpinRef = useRef(autoSpin);
@@ -191,54 +188,20 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
     scene.add(stage);
     const platform = new THREE.Mesh(
       new THREE.CylinderGeometry(0.42, 0.45, 0.04, 48),
-      new THREE.MeshStandardMaterial({ color: 0xdff3e9, roughness: 0.45 })
+      new THREE.MeshStandardMaterial({ color: 0xf1e7d8, roughness: 0.6 })
     );
     platform.position.y = -0.02;
     stage.add(platform);
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(0.43, 0.008, 12, 64),
-      new THREE.MeshStandardMaterial({ color: 0x2e8b67, roughness: 0.42 })
+      new THREE.MeshStandardMaterial({ color: 0x47724a, roughness: 0.5 })
     );
     ring.rotation.x = Math.PI / 2;
     stage.add(ring);
 
-    // ออร่ามรกต (รางวัลจากภารกิจ)
-    const auraMat = new THREE.MeshStandardMaterial({
-      color: 0x3bd69c, emissive: 0x1d9b6c, emissiveIntensity: 0.45, roughness: 0.22, transparent: true, opacity: 0.85,
-    });
-    const aura = new THREE.Group();
-    const auraRing = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.008, 12, 64), auraMat);
-    auraRing.rotation.x = Math.PI / 2;
-    aura.add(auraRing);
-    const orbs = [0, 1, 2, 3].map(() => {
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.016, 12, 12), auraMat);
-      aura.add(orb);
-      return orb;
-    });
-    stage.add(aura);
-
     const turntable = new THREE.Group();
     turntable.rotation.y = rotationTargetRef.current;
     stage.add(turntable);
-
-    // ที่คาดผม / มงกุฎ ผูกกับกระดูกศีรษะ
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xf4b93b, emissive: 0x5c3c00, emissiveIntensity: 0.2, roughness: 0.26, metalness: 0.62 });
-    const mintMat = new THREE.MeshStandardMaterial({ color: 0x226f51, roughness: 0.35 });
-    const headband = new THREE.Mesh(new THREE.TorusGeometry(0.182, 0.012, 10, 48), goldMat);
-    headband.rotation.x = Math.PI / 2 - 0.25;
-    headband.position.set(0, 0.2, 0.01);
-    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.018), mintMat);
-    gem.position.set(0, 0.215, 0.18);
-    const crown = new THREE.Group();
-    const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.08, 0.035, 20, 1, true), goldMat);
-    crown.add(crownBase);
-    for (let i = 0; i < 5; i++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.045, 8), goldMat);
-      const a = (i / 5) * Math.PI * 2;
-      spike.position.set(Math.cos(a) * 0.072, 0.035, Math.sin(a) * 0.072);
-      crown.add(spike);
-    }
-    crown.position.set(0, 0.315, -0.01);
 
     let character: CharacterController | null = null;
     CharacterController.create()
@@ -249,8 +212,6 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
         }
         character = c;
         turntable.add(c.root);
-        const head = c.headBone();
-        head?.add(headband, gem, crown);
         setLoadState('ready');
       })
       .catch(() => {
@@ -323,19 +284,6 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
         character.root.position.y = lift;
       }
 
-      const acc = live.equippedAccessory;
-      headband.visible = acc === 'gold_headband' || acc === 'champion_crown';
-      gem.visible = acc === 'gold_headband';
-      crown.visible = acc === 'champion_crown';
-      aura.visible = acc === 'emerald_aura' || acc === 'champion_crown';
-      if (aura.visible) {
-        auraRing.position.y = 0.06 + Math.sin(elapsed * 2.6) * 0.01;
-        orbs.forEach((orb, i) => {
-          const a = elapsed * 1.35 + (i * Math.PI) / 2;
-          orb.position.set(Math.cos(a) * 0.47, 0.08 + Math.sin(elapsed * 3 + i) * 0.015, Math.sin(a) * 0.47);
-        });
-      }
-
       if (!isDragging && autoSpinRef.current && now > resumeSpinAt) rotationTargetRef.current += dt * 0.6;
       turntable.rotation.y += (rotationTargetRef.current - turntable.rotation.y) * 0.14;
       currentRotationRef.current = turntable.rotation.y;
@@ -386,23 +334,23 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
   if (compact) return canvas;
 
   return (
-    <div className="glass-card-mint rounded-3xl p-3.5">
+    <div className="glass-card rounded-3xl p-4">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0">
           <div className="flex items-center flex-wrap gap-1.5">
             <h2 className="text-base font-bold text-ink-900 truncate">{displayOwnerTitle}</h2>
-            <span className="rounded-full glass-pill px-2 py-0.5 text-[10px] font-semibold text-ink-900">
+            <span className="text-xs text-ink-500">
               {GENDER_LABEL[gender]}
               {hasValidAge ? ` · ${age} ปี` : ''}
             </span>
             {bmiInterpretation && (
-              <span className="rounded-full bg-sage-600/15 px-2 py-0.5 text-[10px] font-bold text-sage-900">
+              <span className="rounded-full bg-sage-50 px-2 py-0.5 text-xs font-semibold text-sage-700">
                 {bmiInterpretation.category}
               </span>
             )}
           </div>
           {hasRealBodyStats && (
-            <p className="text-xs text-ink-700 tabular-data mt-0.5">
+            <p className="text-sm text-ink-500 tabular-data">
               {goalPreviewMix > 0.05
                 ? `${blendedWeight.toFixed(1)} กก. · BMI ${blendedBmi.toFixed(1)}`
                 : `${effectiveWeightKg.toFixed(1)} กก. · ${effectiveHeightCm} ซม. · BMI ${currentBmi.toFixed(1)}`}
@@ -414,7 +362,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
             type="button"
             onClick={() => setAutoSpin((prev) => !prev)}
             aria-label={autoSpin ? 'หยุดหมุนอัตโนมัติ' : 'หมุนอัตโนมัติ'}
-            className="tactile-btn w-8 h-8 rounded-full glass-pill inline-flex items-center justify-center text-sage-700"
+            className="tactile-btn w-9 h-9 rounded-full inline-flex items-center justify-center text-ink-700 hover:bg-cream-200"
           >
             {autoSpin ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
@@ -426,24 +374,24 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
               setGoalPreviewMix(0);
             }}
             aria-label="รีเซ็ตมุมมอง 3D"
-            className="tactile-btn inline-flex items-center gap-1 rounded-full glass-pill px-2.5 py-1.5 text-xs font-semibold text-sage-700"
+            className="tactile-btn w-9 h-9 rounded-full inline-flex items-center justify-center text-ink-700 hover:bg-cream-200"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>รีเซ็ต</span>
+            <RotateCcw className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {canvas}
 
-      <div className="grid grid-cols-4 gap-1.5 mt-1.5">
+      <div className="flex gap-1.5 mt-2 overflow-x-auto -mx-1 px-1 [scrollbar-width:none]">
         {poseButtons.map((btn) => (
           <button
             key={btn.id + btn.label}
             type="button"
             onClick={() => setPose(btn.id)}
-            className={`tactile-btn py-1.5 px-1.5 rounded-full text-xs font-semibold truncate ${
-              pose === btn.id ? 'glass-btn-primary' : 'glass-pill text-ink-900'
+            aria-pressed={pose === btn.id}
+            className={`tactile-btn h-8 px-3 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 ${
+              pose === btn.id ? 'bg-ink-900 text-cream-50' : 'glass-pill text-ink-700'
             }`}
           >
             {btn.label}
@@ -452,8 +400,8 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
       </div>
 
       {hasRealBodyStats && Math.abs(effectiveWeightKg - effectiveTargetKg) >= 0.5 && (
-        <div className="mt-2.5 pt-2.5 border-t border-white/60">
-          <div className="flex items-center justify-between text-xs font-medium text-ink-700 mb-1 tabular-data">
+        <div className="mt-3 pt-3 border-t border-line">
+          <div className="flex items-center justify-between text-xs font-medium text-ink-500 mb-1 tabular-data">
             <span>ปัจจุบัน {effectiveWeightKg} กก.</span>
             <span>เป้าหมาย {effectiveTargetKg} กก.</span>
           </div>
@@ -465,7 +413,7 @@ export const Avatar3DScene: React.FC<Avatar3DSceneProps> = ({
             value={goalPreviewMix}
             onChange={(e) => setGoalPreviewMix(parseFloat(e.target.value))}
             aria-label="สไลเดอร์เปรียบเทียบรูปร่างปัจจุบันกับเป้าหมาย"
-            className="w-full accent-sage-600 h-2 bg-white/70 rounded-lg cursor-pointer"
+            className="w-full h-2 cursor-pointer"
           />
         </div>
       )}

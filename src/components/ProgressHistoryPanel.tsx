@@ -121,9 +121,9 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
             </span>
             <span>เป้า {progress.targetWeightKg} กก.</span>
           </div>
-          <div className="w-full h-2.5 rounded-full bg-white/80 overflow-hidden">
+          <div className="w-full h-2.5 rounded-full bg-cream-200 overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-sage-500 to-sky-500 transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-sage-500 transition-all duration-500 ease-out"
               style={{ width: `${progress.progressPercent}%` }}
             />
           </div>
@@ -222,7 +222,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
           </div>
 
           {progress.chartPoints.length > 0 && (
-            <div className="flex items-center justify-between text-[10px] text-ink-700 font-semibold pt-2 border-t border-white/60 tabular-data">
+            <div className="flex items-center justify-between text-[10px] text-ink-700 font-semibold pt-2 border-t border-line tabular-data">
               <span>{progress.chartPoints[0].dateLabel}</span>
               {progress.chartPoints.length === 1 && (
                 <span className="text-sage-700">ชั่งครั้งถัดไปเพื่อเริ่มเห็นแนวโน้ม</span>
@@ -277,7 +277,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
                   {/* สถิติ 3 คอลัมน์: แคลอรี / น้ำ / ออกกำลังกาย */}
                   <div className="grid grid-cols-3 gap-1.5 text-center text-xs tabular-data">
                     {/* แคลอรี */}
-                    <div className="rounded-xl bg-white/70 p-1.5">
+                    <div className="rounded-xl bg-cream-200 p-1.5">
                       <span className="block text-[10px] text-ink-700">แคลอรี</span>
                       <span
                         className={`block font-bold text-xs ${
@@ -292,7 +292,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
                     </div>
 
                     {/* น้ำดื่ม */}
-                    <div className="rounded-xl bg-white/70 p-1.5">
+                    <div className="rounded-xl bg-cream-200 p-1.5">
                       <span className="block text-[10px] text-ink-700">น้ำดื่ม</span>
                       <span className="block font-bold text-xs text-sky-600">
                         {(item.waterGlasses * mlPerGlass).toLocaleString()}
@@ -301,7 +301,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
                     </div>
 
                     {/* เบิร์นออกกำลัง */}
-                    <div className="rounded-xl bg-white/70 p-1.5">
+                    <div className="rounded-xl bg-cream-200 p-1.5">
                       <span className="block text-[10px] text-ink-700">เบิร์น</span>
                       <span className="block font-bold text-xs text-peach-600">
                         ~{item.burnedCalories}
@@ -314,7 +314,7 @@ export const ProgressHistoryPanel: React.FC<ProgressHistoryPanelProps> = ({
 
                   {/* สารอาหารหลัก P / C / F (หากมีการบันทึกอาหาร) */}
                   {item.foodsCount > 0 && (
-                    <div className="pt-1 border-t border-white/60 flex items-center justify-between text-[11px] font-semibold text-ink-700 tabular-data">
+                    <div className="pt-1 border-t border-line flex items-center justify-between text-[11px] font-semibold text-ink-700 tabular-data">
                       <span className="text-peach-600">
                         P {item.proteinGrams}g
                       </span>

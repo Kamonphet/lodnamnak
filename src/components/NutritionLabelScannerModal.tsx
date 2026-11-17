@@ -245,10 +245,10 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
   // Portal ไปที่ body เพื่อไม่ให้ parent ที่มี transform/backdrop-filter ดึงตำแหน่ง fixed ไปผิดที่ และให้อยู่เหนือแถบเมนู
   return createPortal(
     <div className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center sm:p-3 bg-ink-900/60 backdrop-blur-md animate-toast-in">
-      <div className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-lg app-sheet sm:rounded-3xl shadow-modal overflow-hidden flex flex-col sm:border sm:border-white/60">
+      <div className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-lg app-sheet sm:rounded-3xl shadow-modal overflow-hidden flex flex-col sm:border sm:border-line">
         {/* Header */}
         <div
-          className="px-5 pb-3 pt-3 border-b border-sand-100 flex items-center justify-between bg-white/70"
+          className="px-5 pb-3 pt-3 border-b border-sand-100 flex items-center justify-between bg-cream-200"
           style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
           <div className="flex items-center gap-2">
@@ -300,7 +300,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                       className="w-full h-full object-cover"
                     />
                     {/* กรอบช่วยเล็งถ่ายฉลาก */}
-                    <div className="absolute inset-x-8 inset-y-12 border-2 border-dashed border-white/80 rounded-2xl pointer-events-none flex flex-col justify-between p-3">
+                    <div className="absolute inset-x-8 inset-y-12 border-2 border-dashed border-line rounded-2xl pointer-events-none flex flex-col justify-between p-3">
                       <div className="flex justify-between">
                         <span className="w-4 h-4 border-t-2 border-l-2 border-sage-400 rounded-tl" />
                         <span className="w-4 h-4 border-t-2 border-r-2 border-sage-400 rounded-tr" />
@@ -342,10 +342,10 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                   <button
                     type="button"
                     onClick={handleCaptureShutter}
-                    className="tactile-btn w-16 h-16 rounded-full bg-sage-500 text-white shadow-lg flex items-center justify-center border-4 border-white/80 hover:bg-sage-600"
+                    className="tactile-btn w-16 h-16 rounded-full bg-sage-500 text-white shadow-lg flex items-center justify-center border-4 border-line hover:bg-sage-600"
                     aria-label="ถ่ายภาพ"
                   >
-                    <div className="w-12 h-12 rounded-full border-2 border-white/60 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full border-2 border-line flex items-center justify-center">
                       <Camera className="w-6 h-6" />
                     </div>
                   </button>
@@ -463,7 +463,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                     {decision.macroHighlights.map((hi, i) => (
                       <span
                         key={i}
-                        className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/80 backdrop-blur-sm border border-black/5"
+                        className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cream-200 backdrop-blur-sm border border-black/5"
                       >
                         {hi}
                       </span>
@@ -577,7 +577,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
         {/* Footer Actions (หน้าตรวจสอบเท่านั้น; ขั้นอื่นปิดด้วยปุ่ม X) */}
         {step === 'review_decision' && (
         <div
-          className="px-5 pt-3 border-t border-sand-100 flex items-center justify-between bg-white/70"
+          className="px-5 pt-3 border-t border-sand-100 flex items-center justify-between bg-cream-200"
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         >
             <>

@@ -55,7 +55,7 @@ const Section: React.FC<{ icon: React.ReactNode; title: string; children: React.
       </span>
       {title}
     </h3>
-    <div className="divide-y divide-white/60">{children}</div>
+    <div className="divide-y divide-line">{children}</div>
   </section>
 );
 
@@ -160,7 +160,6 @@ function CharacterEditor({
           targetWeightKg={profile.targetWeightKg}
           primaryGoal={profile.primaryGoal}
           avatarStyle={profile.avatarStyle}
-          equippedAccessory={profile.equippedAccessory}
           expression="curious"
           lowPower={lowPower}
         />
@@ -297,7 +296,7 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
         className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-md app-sheet sm:rounded-3xl flex flex-col overflow-hidden"
       >
         <header
-          className="px-4 pb-3 flex items-center justify-between border-b border-sand-100 bg-white/70"
+          className="px-4 pb-3 flex items-center justify-between border-b border-sand-100 bg-cream-200"
           style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
           <h2 id="settings-title" className="text-lg font-bold text-ink-900">

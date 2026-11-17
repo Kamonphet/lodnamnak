@@ -3,7 +3,6 @@ import {
   Check,
   Download,
   Dumbbell,
-  Flame,
   HeartPulse,
   MessageCircleHeart,
   Settings,
@@ -37,10 +36,10 @@ const NAV_ITEMS: {
   label: string;
   Icon: React.FC<{ className?: string }>;
 }[] = [
-  { id: 'dashboard', label: 'หุ่น 3D & แผน', Icon: HeartPulse },
+  { id: 'dashboard', label: 'วันนี้', Icon: HeartPulse },
   { id: 'food', label: 'อาหาร', Icon: Utensils },
   { id: 'workout', label: 'ออกกำลัง', Icon: Dumbbell },
-  { id: 'coach', label: 'โค้ช AI', Icon: MessageCircleHeart },
+  { id: 'coach', label: 'โค้ช', Icon: MessageCircleHeart },
 ];
 
 export const App: React.FC = () => {
@@ -62,10 +61,6 @@ export const App: React.FC = () => {
   const showOnboarding = !store.profile || !store.metrics || wizardMode !== 'none';
   const showWeighInReminder =
     !showOnboarding && shouldShowWeighInReminder(store.weightHistory, store.appSettings);
-  const activeNavIndex = Math.max(
-    0,
-    NAV_ITEMS.findIndex((item) => item.id === activeTab)
-  );
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((item) => item.id !== id));
@@ -253,13 +248,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-dvh flex justify-center relative">
-      {/* พื้นหลังแสงโปร่งสำหรับสร้างการหักเหของวัสดุ Liquid Glass */}
-      <div className="liquid-ambient-stage" aria-hidden="true">
-        <div className="liquid-orb liquid-orb-mint" />
-        <div className="liquid-orb liquid-orb-peach" />
-        <div className="liquid-orb liquid-orb-aqua" />
-      </div>
-
       {/* แจ้งเตือนลอยตัว & หน้าต่างยืนยัน */}
       <LiquidToastViewport toasts={toasts} onDismiss={dismissToast} />
       <ConfirmDialog dialog={confirmDialog} onClose={() => setConfirmDialog(null)} />
@@ -324,53 +312,28 @@ export const App: React.FC = () => {
       )}
 
       <div className="w-full max-w-md min-h-dvh flex flex-col relative z-10">
-        {/* แถบด้านบนสไตล์ Liquid Glass พร้อมไอคอนประจำแอป */}
-        <header className="sticky top-2.5 z-30 mx-3 mt-2.5 rounded-2xl glass-header px-3.5 py-2.5 flex items-center justify-between gap-2">
+        <header className="sticky top-0 z-30 glass-header px-4 h-14 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 shrink-0">
-            <img
-              src="/favicon.svg"
-              alt=""
-              width={32}
-              height={32}
-              className="w-8 h-8 rounded-xl shrink-0"
-            />
-            <span className="app-brand-text hidden min-[390px]:inline font-bold text-base text-ink-900 tracking-tight">
-              Lodnamnak
-            </span>
+            <img src="/favicon.svg" alt="" width={28} height={28} className="w-7 h-7 rounded-lg shrink-0" />
+            <span className="app-brand-text font-bold text-[17px] text-ink-900 tracking-tight">Lodnamnak</span>
           </div>
 
-          <div className="flex items-center gap-1.5 min-w-0">
-            {!showOnboarding && store.gamification && (
-              <button
-                type="button"
-                onClick={() => handleSelectTab('dashboard')}
-                aria-label="ดูภารกิจและเลเวลประจำวัน"
-                className={`tactile-btn inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold shrink-0 tabular-data ${
-                  store.gamification.currentStreakDays > 0
-                    ? 'glass-btn-warm'
-                    : 'glass-pill text-ink-900'
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5" />
-                <span>{store.gamification.currentStreakDays} วัน</span>
-                <span className="app-header-level opacity-80">· Lv.{store.gamification.level}</span>
-              </button>
-            )}
-
+          <div className="flex items-center gap-1 min-w-0">
             {store.accounts.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowAccountsPanel((prev) => !prev)}
                 aria-label="ผู้ใช้ในเครื่องนี้"
-                className="tactile-btn inline-flex items-center gap-1.5 rounded-full glass-pill px-2.5 py-1.5 text-xs font-semibold text-ink-900 shrink-0"
+                aria-expanded={showAccountsPanel}
+                className="tactile-btn h-9 inline-flex items-center gap-1.5 rounded-full px-2.5 text-sm font-semibold text-ink-700 hover:bg-cream-200 shrink-0"
               >
-                <Users className="w-3.5 h-3.5 text-sage-600 shrink-0" />
-                <span className="app-header-name hidden min-[400px]:inline max-w-[72px] truncate">
+                <Users className="w-4 h-4 shrink-0" />
+                <span className="app-header-name hidden min-[400px]:inline max-w-[88px] truncate">
                   {store.profile?.name || 'สลับผู้ใช้'}
                 </span>
-                <span className="rounded-full bg-sage-600/15 text-sage-700 px-1.5 py-0.2 text-[10px] font-bold tabular-data shrink-0">
-                  {store.accounts.length}
-                </span>
+                {store.accounts.length > 1 && (
+                  <span className="text-xs text-ink-500 tabular-data">{store.accounts.length}</span>
+                )}
               </button>
             )}
 
@@ -379,9 +342,9 @@ export const App: React.FC = () => {
                 type="button"
                 onClick={() => setShowSettings(true)}
                 aria-label="ตั้งค่า"
-                className="tactile-btn w-8 h-8 rounded-full glass-pill inline-flex items-center justify-center text-ink-700 shrink-0"
+                className="tactile-btn w-9 h-9 rounded-full inline-flex items-center justify-center text-ink-700 hover:bg-cream-200 shrink-0"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-[18px] h-[18px]" />
               </button>
             )}
           </div>
@@ -391,7 +354,7 @@ export const App: React.FC = () => {
         {showAccountsPanel && (
           <section
             aria-label="จัดการโปรไฟล์ผู้ใช้งาน"
-            className="mx-3 mt-2 rounded-3xl glass-card px-4 py-3.5 space-y-3 z-20 animate-toast-in"
+            className="mx-3.5 mt-3 rounded-3xl glass-card px-4 py-3.5 space-y-3 z-20 animate-toast-in"
           >
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-ink-900">
@@ -407,7 +370,7 @@ export const App: React.FC = () => {
               </button>
             </div>
 
-            <div className="divide-y divide-white/60">
+            <div className="divide-y divide-line">
               {store.accounts.map((acc) => {
                 const isCurrent = acc.id === store.activeAccountId;
                 return (
@@ -512,7 +475,7 @@ export const App: React.FC = () => {
         )}
 
         {/* เนื้อหาหลักพร้อมแอนิเมชันเปลี่ยนหน้า */}
-        <main className="flex-1 pb-28 overflow-x-clip">
+        <main className="flex-1 pb-24 overflow-x-clip">
           {showOnboarding ? (
             <OnboardingWizard
               initialProfile={store.profile}
@@ -548,7 +511,7 @@ export const App: React.FC = () => {
           ) : (
             <div
               key={activeTab}
-              className={`px-3.5 py-4 ${
+              className={`px-4 pt-4 pb-6 ${
                 tabDirection === 'right' ? 'animate-page-right' : 'animate-page-left'
               }`}
             >
@@ -569,7 +532,6 @@ export const App: React.FC = () => {
                     onSelectPace={store.selectPace}
                     onReportWeight={store.reportNewWeight}
                     onAdjustWater={store.adjustTodayWater}
-                    onEquipAccessory={store.equipAvatarAccessory}
                     onEditProfile={() => setWizardMode('edit')}
                     waterGlassMl={store.appSettings.waterGlassMl}
                     lowPower3d={store.appSettings.lowPower3d}
@@ -632,18 +594,12 @@ export const App: React.FC = () => {
           )}
         </main>
 
-        {/* แถบนำทางด้านล่างลอยตัวแบบ Liquid Glass Dock พร้อมตัวเลื่อน */}
         {!showOnboarding && (
           <nav
-            aria-label="เมนูหลักด้านล่าง"
-            className="fixed bottom-2.5 left-1/2 -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-[424px] z-30 rounded-[26px] glass-dock p-1.5 safe-bottom"
+            aria-label="เมนูหลัก"
+            className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30 glass-dock safe-bottom"
           >
-            <div className="relative grid grid-cols-4">
-              <div
-                aria-hidden="true"
-                className="absolute inset-y-0 left-0 w-1/4 rounded-[20px] glass-dock-indicator pointer-events-none"
-                style={{ transform: `translateX(${activeNavIndex * 100}%)` }}
-              />
+            <div className="grid grid-cols-4">
               {NAV_ITEMS.map(({ id, label, Icon }) => {
                 const active = activeTab === id;
                 return (
@@ -651,15 +607,13 @@ export const App: React.FC = () => {
                     key={id}
                     type="button"
                     onClick={() => handleSelectTab(id)}
-                    className={`relative z-10 tactile-btn min-h-[48px] rounded-[20px] flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold transition-colors ${
-                      active ? 'text-sage-900' : 'text-ink-700'
+                    aria-current={active ? 'page' : undefined}
+                    className={`relative min-h-[56px] flex flex-col items-center justify-center gap-0.5 text-xs transition-colors ${
+                      active ? 'text-sage-700 font-bold' : 'text-ink-500 font-medium'
                     }`}
                   >
-                    <Icon
-                      className={`w-5 h-5 transition-transform duration-200 ${
-                        active ? 'text-sage-600 scale-110' : 'text-ink-500'
-                      }`}
-                    />
+                    {active && <span aria-hidden="true" className="absolute top-0 inset-x-6 h-0.5 rounded-full bg-sage-600" />}
+                    <Icon className="w-[22px] h-[22px]" />
                     <span>{label}</span>
                   </button>
                 );

@@ -231,9 +231,9 @@ export const GamificationCard: React.FC<GamificationCardProps> = ({
       </div>
 
       {/* หลอด XP ไล่เฉดสีสดใส */}
-      <div className="w-full h-2.5 rounded-full bg-white/80 overflow-hidden">
+      <div className="w-full h-2.5 rounded-full bg-cream-200 overflow-hidden">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-sage-500 to-sky-500 transition-all duration-500 ease-out"
+          className="h-full rounded-full bg-sage-500 transition-all duration-500 ease-out"
           style={{ width: `${summary.levelProgressPct}%` }}
         />
       </div>
@@ -260,7 +260,7 @@ export const GamificationCard: React.FC<GamificationCardProps> = ({
                   ? 'bg-sage-500 text-white'
                   : dot.shielded
                   ? 'bg-peach-100 text-peach-600'
-                  : 'bg-white/75 text-ink-500'
+                  : 'bg-cream-200 text-ink-500'
               }`}
             >
               {dot.active ? (
@@ -341,7 +341,7 @@ export const GamificationCard: React.FC<GamificationCardProps> = ({
                     className={`w-8 h-8 rounded-xl shrink-0 inline-flex items-center justify-center ${
                       q.completed
                         ? 'bg-sage-500 text-white'
-                        : 'bg-white/85 text-ink-700'
+                        : 'bg-cream-200 text-ink-700'
                     }`}
                   >
                     {q.completed ? (
@@ -420,7 +420,7 @@ export const GamificationCard: React.FC<GamificationCardProps> = ({
           </div>
 
           {/* เหรียญความสำเร็จ 18 เหรียญ (ง่าย / กลาง / ท้าทาย / ตำนาน) */}
-          <div className="space-y-2 pt-2 border-t border-white/70">
+          <div className="space-y-2 pt-2 border-t border-line">
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-900 tabular-data">
                 <Award className="w-3.5 h-3.5 text-sage-600" />
@@ -481,7 +481,7 @@ export const GamificationCard: React.FC<GamificationCardProps> = ({
                       className={`w-8 h-8 rounded-2xl inline-flex items-center justify-center ${
                         badge.unlocked
                           ? diffMeta.iconBg
-                          : 'bg-white/75 text-ink-500'
+                          : 'bg-cream-200 text-ink-500'
                       }`}
                     >
                       {renderBadgeIcon(badge.iconKey)}
