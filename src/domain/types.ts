@@ -265,7 +265,13 @@ export interface ParsedNutritionLabel {
   detectedAllergens: string[];
   rawText: string;
   confidence: 'high' | 'medium' | 'low';
+  /** ช่องหลักที่อ่านจากฉลากไม่ได้ (ให้ผู้ใช้กรอก) */
+  missingFields?: LabelMacroField[];
+  /** ช่องที่ไม่ได้อ่านตรง ๆ แต่คำนวณ เช่น พลังงานจากไขมัน/โปรตีน/คาร์บ */
+  estimatedFields?: LabelMacroField[];
 }
+
+export type LabelMacroField = 'calories' | 'proteinGrams' | 'carbsGrams' | 'fatGrams';
 
 export interface NutritionLabelDecision {
   verdict: LabelDecisionVerdict;

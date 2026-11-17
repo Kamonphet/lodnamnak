@@ -73,7 +73,7 @@ export const DEFAULT_OCR_OPTIONS: OcrOptions = {
   maxCandidates: 3000,
   dropBelow: 0.6,
   minChars: 1,
-  junkBelow: 0.9,
+  junkBelow: 0.85,
   junkInvalid: 0.05,
   batch: 16,
   maxW: 3200,

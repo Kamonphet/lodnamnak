@@ -68,6 +68,70 @@ describe('nutrition parser with OCR slips', () => {
   });
 });
 
+describe('nutrition parser on table rows', () => {
+  it('never takes a milligram value as energy, and estimates energy from macros', () => {
+    // OCR output of a real tray-meal label: energy misread, protein label lost
+    const p = parseNutritionFactsText(
+      [
+        'ข้อมลโกชนากาS',
+        'ฟล้งาบ 20 ก็โคลจคลอร',
+        'โซบ้นทั้งหมด 9 ก. Y',
+        'ไซบ้นอิ่มล้ว 5 N 25N',
+        'คอเลศเฉอSอA 20 Uก. 7%',
+        '14 ก.',
+        'คาร์โบไฮเosดกั้งหมด 38 ก. 13',
+        'น้ำดาคทั้งหมด 10 ก',
+        'ไซเฉียม 760 Uก. 38 Y',
+        'โพแกสเซียบ 370 บก.',
+        'ยล้งพาว้นค: ,000 กีลเคอรี',
+      ].join('\n'),
+    );
+    expect(p).toMatchObject({ fatGrams: 9, proteinGrams: 14, carbsGrams: 38, sugarGrams: 10, sodiumMg: 760, productName: '' });
+    expect(p.calories).toBeGreaterThanOrEqual(280);
+    expect(p.calories).toBeLessThanOrEqual(300);
+    expect(p.estimatedFields).toEqual(['calories']);
+    expect(p.missingFields).toEqual([]);
+  });
+
+  it('leaves a value empty when only the % column was read', () => {
+    // same photo after JPEG: the "38 ก." and "290 กิโลแคลอรี" boxes were not detected
+    const p = parseNutritionFactsText(
+      [
+        'ข้อมลโกชนากาS',
+        'แล้งงาป',
+        'รอวจะรวงคาจ้างจ้งวอว้บ',
+        'โซบ้นทั้งหมด 9 ก. Y',
+        'ไซบ้นอิ่มฉิว 5 N 25N',
+        'คอเลศเฉอSอA 20 Uก. 7%',
+        '14 ก.',
+        'คาร์ไบไฮเasดกั้งหมด 13',
+        'น้ำดาคทั้งหมด 10 ก',
+        'โซเดียบ 760 Uถ. 38 N',
+        'แล้พานว้นค: ,000 กีลแคลอร',
+      ].join('\n'),
+    );
+    expect(p).toMatchObject({ fatGrams: 9, proteinGrams: 14, carbsGrams: 0, calories: 0, productName: '' });
+    expect(p.missingFields).toEqual(['calories', 'carbsGrams']);
+  });
+
+  it('keeps a read energy value that agrees with the macros', () => {
+    const p = parseNutritionFactsText(['พลังงาน 290 กิโลแคลอรี', 'ไขมันทั้งหมด 9 ก.', 'โปรตีน 14 ก.', 'คาร์โบไฮเดรตทั้งหมด 38 ก.', 'โซเดียม 760 มก.'].join('\n'));
+    expect(p).toMatchObject({ calories: 290, estimatedFields: [] });
+  });
+
+  it('marks values it could not read instead of guessing', () => {
+    const p = parseNutritionFactsText(['ข้อมูลโภชนาการ', 'โซเดียม 760 มก.', 'พลังงาน 290 กิโลแคลอรี'].join('\n'));
+    expect(p.calories).toBe(290);
+    expect(p.missingFields).toEqual(['proteinGrams', 'carbsGrams', 'fatGrams']);
+    expect(p.productName).toBe('');
+  });
+
+  it('does not flag sesame because of the word พลังงาน', () => {
+    expect(parseNutritionFactsText('พลังงาน 120 กิโลแคลอรี').detectedAllergens).not.toContain('งา');
+    expect(parseNutritionFactsText('ส่วนประกอบ: แป้ง งาขาว').detectedAllergens).toContain('งา');
+  });
+});
+
 describe('OpenThai OCR on rendered labels', () => {
   const load = (name: string, width: number, height: number) => ({
     width,
@@ -104,5 +168,18 @@ describe('OpenThai OCR on rendered labels', () => {
       sugarGrams: 25,
       sodiumMg: 125,
     });
+  }, 60_000);
+
+  it('reads a phone photo of a tray-meal label', async () => {
+    const runner = await createOrtRunner(
+      readFileSync(join(root, 'public/openthai-ocr/det.onnx')),
+      readFileSync(join(root, 'public/openthai-ocr/rec.onnx')),
+      readFileSync(join(root, 'node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm')),
+    );
+    const charset = buildCharset(readFileSync(join(root, 'public/openthai-ocr/rec_dict.txt'), 'utf8'));
+    const photo = await readImage(load('th_tray_photo', 824, 830), runner, charset);
+    const p = parseNutritionFactsText(photo.text);
+    expect(p).toMatchObject({ proteinGrams: 14, carbsGrams: 38, fatGrams: 9, sodiumMg: 760, missingFields: [] });
+    expect(Math.abs(p.calories - 290)).toBeLessThanOrEqual(10);
   }, 60_000);
 });

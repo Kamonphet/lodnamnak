@@ -114,6 +114,180 @@ function fixZeros(text: string): string {
     .replace(/(?<![A-Za-z\d])[Oo](?=\s*(?:%|ก\.|มก\.|g\b|mg\b))/g, '0');
 }
 
+// ---------------------------------------------------------------------------
+// อ่านตารางทีละแถว: ชื่อสารอาหาร (สะกดเพี้ยนได้) + ตัวเลขแรก + หน่วย
+// ใช้หน่วยกันไม่ให้ค่ามิลลิกรัม (โซเดียม) ไปเป็นพลังงาน และเดาแถวที่ชื่อหายจากลำดับมาตรฐานของฉลากไทย
+// ---------------------------------------------------------------------------
+type Nutrient =
+  | 'energy'
+  | 'fat'
+  | 'satFat'
+  | 'transFat'
+  | 'cholesterol'
+  | 'protein'
+  | 'carbs'
+  | 'fiber'
+  | 'sugar'
+  | 'sodium'
+  | 'potassium';
+type Unit = 'kcal' | 'g' | 'mg';
+
+/** ลำดับแถวบนฉลากโภชนาการไทย (ฉบับเต็มและแบบย่อ GDA) */
+const LABEL_ORDER: Nutrient[] = ['energy', 'fat', 'satFat', 'transFat', 'cholesterol', 'protein', 'carbs', 'fiber', 'sugar', 'sodium', 'potassium'];
+
+const NUTRIENT_WORDS: Record<Nutrient, { words: string[]; unit: Unit }> = {
+  energy: { words: ['พลังงานทั้งหมด', 'พลังงาน', 'energy', 'calories'], unit: 'kcal' },
+  fat: { words: ['ไขมันทั้งหมด', 'ไขมัน', 'total fat', 'fat'], unit: 'g' },
+  satFat: { words: ['ไขมันอิ่มตัว', 'saturated fat'], unit: 'g' },
+  transFat: { words: ['ไขมันทรานส์', 'trans fat'], unit: 'g' },
+  cholesterol: { words: ['คอเลสเตอรอล', 'โคเลสเตอรอล', 'cholesterol'], unit: 'mg' },
+  protein: { words: ['โปรตีน', 'protein'], unit: 'g' },
+  carbs: { words: ['คาร์โบไฮเดรตทั้งหมด', 'คาร์โบไฮเดรต', 'total carbohydrate', 'carbohydrate'], unit: 'g' },
+  fiber: { words: ['ใยอาหาร', 'dietary fiber', 'fiber'], unit: 'g' },
+  sugar: { words: ['น้ำตาลทั้งหมด', 'น้ำตาล', 'total sugars', 'sugars', 'sugar'], unit: 'g' },
+  sodium: { words: ['โซเดียม', 'sodium'], unit: 'mg' },
+  potassium: { words: ['โพแทสเซียม', 'potassium'], unit: 'mg' },
+};
+
+// ตัวอักษรที่ OCR สับสนบ่อยบนฉลาก ให้นับเป็นตัวเดียวกันตอนเทียบชื่อ
+const LOOKALIKE: Record<string, string> = { ฟ: 'พ', ซ: 'ข', บ: 'ม', ศ: 'ส', ษ: 'ส', ฉ: 'ต', ด: 'ต', ฏ: 'ต', ไ: 'โ', ใ: 'โ', ฬ: 'ห', ก: 'ท' };
+const skeleton = (s: string) => [...loose(s)].map((c) => LOOKALIKE[c] ?? c).join('');
+
+/** ความเหมือนของคำในชื่อแถว (0–1) โดยเทียบทุกช่วงของชื่อ */
+function wordScore(label: string, word: string): number {
+  const L = [...skeleton(label)];
+  const W = skeleton(word);
+  const n = [...W].length;
+  if (!n || !L.length) return 0;
+  let best = Infinity;
+  for (let start = 0; start < L.length; start++) {
+    for (let len = Math.max(1, n - 2); len <= n + 2 && start + len <= L.length; len++) {
+      best = Math.min(best, editDistance(L.slice(start, start + len).join(''), W));
+      if (best === 0) return 1;
+    }
+  }
+  // คำสั้น (fat, sugar) ต้องตรงทุกตัว
+  if (n <= 5) return best === 0 ? 1 : 0;
+  return 1 - best / n;
+}
+
+function detectUnit(after: string): Unit | null {
+  const a = after.trim().slice(0, 12);
+  if (/^(?:มก|[Uuบนม]ก|mg|un\.?)/i.test(a)) return 'mg';
+  if (/แคล|คลอ|kcal|cal|กิโล|กีล|ก็โ/i.test(a)) return 'kcal';
+  if (/^(?:ก|g\b|n\b|n\.|N\b|ñ)/.test(a)) return 'g';
+  return null;
+}
+
+interface LabelRow {
+  label: string;
+  value: number;
+  unit: Unit | null;
+  nutrient?: Nutrient;
+}
+
+function isFootnote(line: string): boolean {
+  return /วันละ|ร้อยละ|ต่อวัน|2,000|,000|daily value|2,000 calorie/i.test(line);
+}
+
+export interface RowParseResult {
+  values: Partial<Record<Nutrient, number>>;
+  /** เจอแถวแต่ตัวเลขไม่น่าเชื่อ (ไม่มีหน่วยในตารางที่มีหน่วย มักเป็นคอลัมน์ %) */
+  unreadable: Set<Nutrient>;
+  energyFromMacros: boolean;
+}
+
+export function parseNutrientRows(lines: string[]): RowParseResult {
+  const rows: LabelRow[] = [];
+  for (const line of lines) {
+    if (isFootnote(line)) continue;
+    const m = line.match(/^(.*?)<?\s*(\d[\d,]*(?:\.\d+)?)(?!\s*%)(.*)$/);
+    if (!m) continue;
+    const value = sanitizeNumber(m[2]);
+    const unit = detectUnit(m[3]);
+    rows.push({ label: m[1], value, unit });
+  }
+
+  // 1) จับคู่ชื่อแถวกับสารอาหาร (หน่วยต้องเข้ากันถ้าอ่านหน่วยได้)
+  const taken = new Set<Nutrient>();
+  for (const row of rows) {
+    let best: { n: Nutrient; score: number; len: number } | null = null;
+    for (const n of LABEL_ORDER) {
+      const meta = NUTRIENT_WORDS[n];
+      if (row.unit && row.unit !== meta.unit && !(n === 'energy' && row.unit === null)) continue;
+      for (const w of meta.words) {
+        const score = wordScore(row.label, w);
+        const len = [...loose(w)].length;
+        if (score >= 0.6 && (!best || score > best.score || (score === best.score && len > best.len))) {
+          best = { n, score, len };
+        }
+      }
+    }
+    if (best && !taken.has(best.n)) {
+      row.nutrient = best.n;
+      taken.add(best.n);
+    } else if (!best && row.unit === 'kcal' && !taken.has('energy')) {
+      row.nutrient = 'energy';
+      taken.add('energy');
+    }
+  }
+
+  // 2) แถวที่อ่านชื่อไม่ได้: เติมตามลำดับมาตรฐานระหว่างแถวที่รู้ชื่อก่อนและหลัง
+  const orderIdx = (n: Nutrient) => LABEL_ORDER.indexOf(n);
+  rows.forEach((row, i) => {
+    if (row.nutrient || row.unit === 'kcal') return;
+    const prev = rows.slice(0, i).reverse().find((r) => r.nutrient);
+    const next = rows.slice(i + 1).find((r) => r.nutrient);
+    if (!prev && !next) return;
+    const lo = prev ? orderIdx(prev.nutrient!) : -1;
+    const hi = next ? orderIdx(next.nutrient!) : LABEL_ORDER.length;
+    const slot = LABEL_ORDER.slice(lo + 1, hi).find(
+      (n) => !taken.has(n) && (row.unit === null || NUTRIENT_WORDS[n].unit === row.unit) && NUTRIENT_WORDS[n].unit !== 'kcal',
+    );
+    if (slot) {
+      row.nutrient = slot;
+      taken.add(slot);
+    }
+  });
+
+  // ตารางที่เขียนหน่วยทุกแถว: เลขที่ไม่มีหน่วยในแถวกรัม/มิลลิกรัมคือคอลัมน์ % ที่ค่าหลักหายไป
+  const tableHasUnits = rows.filter((r) => r.unit === 'g' || r.unit === 'mg').length >= 3;
+  const values: Partial<Record<Nutrient, number>> = {};
+  const unreadable = new Set<Nutrient>();
+  for (const row of rows) {
+    if (!row.nutrient || values[row.nutrient] !== undefined) continue;
+    if (row.unit === null && tableHasUnits && NUTRIENT_WORDS[row.nutrient].unit !== 'kcal') {
+      unreadable.add(row.nutrient);
+      continue;
+    }
+    values[row.nutrient] = row.value;
+  }
+
+  // 3) พลังงานต้องสอดคล้องกับสารอาหารหลัก (ไขมัน 9, โปรตีน/คาร์บ 4 kcal ต่อกรัม)
+  let energyFromMacros = false;
+  // ต้องรู้ครบทั้งไขมัน โปรตีน คาร์บ ถึงจะเทียบ/คำนวณพลังงานได้
+  const macros = [values.fat, values.protein, values.carbs].filter((v) => v !== undefined).length;
+  if (macros === 3) {
+    const est = 9 * (values.fat ?? 0) + 4 * ((values.protein ?? 0) + (values.carbs ?? 0));
+    const e = values.energy ?? 0;
+    if (est >= 20 && (e <= 0 || e < est * 0.6 || e > est * 1.6)) {
+      values.energy = Math.round(est);
+      energyFromMacros = true;
+    }
+  }
+  return { values, unreadable, energyFromMacros };
+}
+
+/** หัวตาราง / บรรทัดที่ไม่ใช่ชื่อสินค้า */
+function looksLikeHeader(line: string): boolean {
+  const l = loose(line);
+  if (/\d/.test(line)) return true;
+  if (/nutrition|serving|ingredient|ข้อมูลโภชนาการ|คุณค่าทางโภชนาการ|หนึ่งหน่วยบริโภค|ส่วนประกอบ/i.test(line)) return true;
+  return ['ข้อมูลโภชนาการ', 'คุณค่าทางโภชนาการ', 'ร้อยละของปริมาณที่แนะนำต่อวัน'].some(
+    (h) => editDistance(skeleton(line).slice(0, [...skeleton(h)].length + 2), skeleton(h)) <= Math.max(3, Math.floor([...l].length / 3)),
+  );
+}
+
 /**
  * สกัดสารก่อภูมิแพ้จากข้อความฉลาก/ส่วนประกอบ
  */
@@ -121,8 +295,10 @@ export function extractAllergensFromText(text: string): string[] {
   const lower = text.toLowerCase();
   const detected: string[] = [];
 
+  // "งา" ซ่อนอยู่ใน "พลังงาน" ที่มีบนทุกฉลาก: นับเฉพาะเมื่อไม่ได้เป็นส่วนของ "งาน"
+  const hit = (kw: string) => (kw === 'งา' ? /(?<!ง)งา(?!น)/.test(lower) : lower.includes(kw.toLowerCase()));
   for (const item of ALLERGEN_DICTIONARY) {
-    if (item.keywords.some((kw) => lower.includes(kw.toLowerCase()))) {
+    if (item.keywords.some(hit)) {
       detected.push(item.name);
     }
   }
@@ -136,6 +312,9 @@ export function extractAllergensFromText(text: string): string[] {
 export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
   const text = fixZeros(rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n'));
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  const rowResult = parseNutrientRows(lines);
+  const rv = rowResult.values;
+  const seenBad = rowResult.unreadable;
 
   // 1. ดึงพลังงาน (Calories)
   let calories = 0;
@@ -147,7 +326,10 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
     text.match(/(\d{2,4})\s*(?:kcal|กิโลแคลอรี)/i) ||
     fuzzyLineValue(lines, 'พลังงานทั้งหมด');
 
-  if (calMatch) {
+  // ค่าจากแถวมาก่อน (มีตรวจหน่วย) ส่วน regex ใช้เมื่อหาแถวไม่เจอ และต้องไม่ใช่ค่ามิลลิกรัม
+  if (rv.energy !== undefined) {
+    calories = Math.round(rv.energy);
+  } else if (calMatch && !/^\s*(?:มก|mg)/i.test(text.slice((calMatch.index ?? 0) + calMatch[0].length))) {
     calories = Math.round(sanitizeNumber(calMatch[1]));
   }
 
@@ -157,7 +339,8 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
     text.match(thNum('โปรตีน')) ||
     text.match(/protein\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g|grams)?/i) ||
     fuzzyLineValue(lines, 'โปรตีน');
-  if (proteinMatch) {
+  if (rv.protein !== undefined) proteinGrams = Number(rv.protein.toFixed(1));
+  else if (proteinMatch && !seenBad.has('protein')) {
     proteinGrams = Number(sanitizeNumber(proteinMatch[1]).toFixed(1));
   }
 
@@ -171,7 +354,8 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
     text.match(/total\s*carbohydrate[s]?\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
     text.match(/carbs?\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
     fuzzyLineValue(lines, 'คาร์โบไฮเดรตทั้งหมด');
-  if (carbsMatch) {
+  if (rv.carbs !== undefined) carbsGrams = Number(rv.carbs.toFixed(1));
+  else if (carbsMatch && !seenBad.has('carbs')) {
     carbsGrams = Number(sanitizeNumber(carbsMatch[1]).toFixed(1));
   }
 
@@ -184,7 +368,8 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
     text.match(/total\s*fat\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
     text.match(/(?<!(?:saturated|trans|from)\s*)fat\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
     fuzzyLineValue(lines, 'ไขมันทั้งหมด');
-  if (fatMatch) {
+  if (rv.fat !== undefined) fatGrams = Number(rv.fat.toFixed(1));
+  else if (fatMatch && !seenBad.has('fat')) {
     fatGrams = Number(sanitizeNumber(fatMatch[1]).toFixed(1));
   }
 
@@ -194,7 +379,8 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
     text.match(thNum('น้ำตาล')) ||
     text.match(/sugars?\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:g)?/i) ||
     fuzzyLineValue(lines, 'น้ำตาล');
-  if (sugarMatch) {
+  if (rv.sugar !== undefined) sugarGrams = Number(rv.sugar.toFixed(1));
+  else if (sugarMatch) {
     sugarGrams = Number(sanitizeNumber(sugarMatch[1]).toFixed(1));
   }
 
@@ -204,7 +390,8 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
     text.match(thNum('โซเดียม')) ||
     text.match(/sodium\s*[:\s]*<?\s*(\d+(?:[.,]\d+)?)\s*(?:mg)?/i) ||
     fuzzyLineValue(lines, 'โซเดียม');
-  if (sodiumMatch) {
+  if (rv.sodium !== undefined) sodiumMg = Math.round(rv.sodium);
+  else if (sodiumMatch) {
     sodiumMg = Math.round(sanitizeNumber(sodiumMatch[1]));
   }
 
@@ -239,11 +426,22 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
   const detectedAllergens = extractAllergensFromText(text);
 
   // คำนวณชื่อสินค้าเบื้องต้น
-  let productName = 'ฉลากโภชนาการ';
-  const candidateLine = lines.find(
+  // ฉลากโภชนาการส่วนใหญ่ไม่มีชื่อสินค้า: ถ้าไม่เจอบรรทัดที่น่าจะเป็นชื่อ ปล่อยว่างให้ผู้ใช้พิมพ์
+  let productName = '';
+  // ชื่อสินค้าอยู่เหนือตาราง: ดูเฉพาะบรรทัดก่อนหัวตาราง (ถ้าอ่านเจอ) หรือก่อนแถวแรกที่มีตัวเลข
+  const headerRow = lines.findIndex((l) =>
+    ['ข้อมูลโภชนาการ', 'คุณค่าทางโภชนาการ', 'nutrition facts', 'nutrition information'].some((h) => wordScore(l, h) >= 0.6)
+  );
+  const firstNumberRow = lines.findIndex((l) => /\d/.test(l));
+  const zoneEnd = headerRow !== -1 ? headerRow : firstNumberRow;
+  const nameZone = zoneEnd === -1 ? lines : lines.slice(0, zoneEnd);
+  const candidateLine = nameZone.find(
     (l) =>
-      !/ข้อมูลโภชนาการ|nutrition facts|หนึ่งหน่วยบริโภค|serving|พลังงาน|calories|ส่วนประกอบ|ingredients/i.test(l) &&
-      l.length >= 3 &&
+      !looksLikeHeader(l) &&
+      !/พลังงาน|calories|ไขมัน|โปรตีน|คาร์โบ|น้ำตาล|โซเดียม/i.test(l) &&
+      !LABEL_ORDER.some((n) => NUTRIENT_WORDS[n].words.some((w) => wordScore(l, w) >= 0.6)) &&
+      /^[\u0E00-\u0E7FA-Za-z\s'&-]+$/.test(l) &&
+      [...l].length >= 3 &&
       l.length <= 40
   );
   if (candidateLine) {
@@ -252,6 +450,17 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
 
   // ประเมินความมั่นใจของข้อมูล (Confidence)
   let confidence: 'high' | 'medium' | 'low' = 'low';
+  const missingFields = (
+    [
+      ['calories', calories],
+      ['proteinGrams', proteinGrams],
+      ['carbsGrams', carbsGrams],
+      ['fatGrams', fatGrams],
+    ] as const
+  )
+    .filter(([key, v]) => v === 0 && !(key === 'proteinGrams' && rv.protein === 0) && !(key === 'carbsGrams' && rv.carbs === 0) && !(key === 'fatGrams' && rv.fat === 0))
+    .map(([key]) => key);
+  const estimatedFields: ParsedNutritionLabel['estimatedFields'] = rowResult.energyFromMacros ? ['calories'] : [];
   const foundNutrients = [proteinGrams > 0, carbsGrams > 0, fatGrams > 0].filter(Boolean).length;
   if (calories > 0 && foundNutrients >= 2) {
     confidence = 'high';
@@ -273,6 +482,8 @@ export function parseNutritionFactsText(rawText: string): ParsedNutritionLabel {
     detectedAllergens,
     rawText,
     confidence,
+    missingFields,
+    estimatedFields,
   };
 }
 

@@ -20,6 +20,7 @@ import {
   NutritionLabelDecision,
   ParsedNutritionLabel,
   UserProfile,
+  LabelMacroField,
 } from '../domain/types';
 
 interface NutritionLabelScannerModalProps {
@@ -227,7 +228,13 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
   // อัปเดตการตัดสินใจเมื่อผู้ใช้แก้ไขตัวเลข
   const handleFieldChange = (field: keyof ParsedNutritionLabel, value: any) => {
     if (!parsedLabel) return;
-    const updated = { ...parsedLabel, [field]: value };
+    // ผู้ใช้กรอกเองแล้ว: ช่องนั้นไม่นับว่าขาดหรือเป็นค่าประมาณอีก
+    const updated = {
+      ...parsedLabel,
+      [field]: value,
+      missingFields: parsedLabel.missingFields?.filter((f) => f !== field),
+      estimatedFields: parsedLabel.estimatedFields?.filter((f) => f !== field),
+    };
     setParsedLabel(updated);
     const updatedDec = evaluateNutritionLabelDecision({
       label: updated,
@@ -240,6 +247,15 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
   };
 
   if (!isOpen) return null;
+
+  const missing = new Set<LabelMacroField>(parsedLabel?.missingFields ?? []);
+  const estimated = new Set<LabelMacroField>(parsedLabel?.estimatedFields ?? []);
+  const incomplete = missing.size > 0;
+  const fieldBox = (f: LabelMacroField) =>
+    `bg-cream-50 p-2.5 rounded-xl border ${missing.has(f) ? 'border-peach-500 ring-2 ring-peach-100' : 'border-line'}`;
+  const fieldValue = (f: LabelMacroField) => (missing.has(f) ? '' : parsedLabel ? parsedLabel[f] : '');
+  const numberChange = (f: LabelMacroField) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    handleFieldChange(f, e.target.value === '' ? 0 : Number(e.target.value));
 
   // Portal ไปที่ body เพื่อไม่ให้ parent ที่มี transform/backdrop-filter ดึงตำแหน่ง fixed ไปผิดที่ และให้อยู่เหนือแถบเมนู
   return createPortal(
@@ -407,7 +423,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
           {step === 'review_decision' && parsedLabel && decision && (
             <div className="space-y-4 animate-card-rise">
               {/* การ์ดคำตัดสินสุขภาพ (Decision Card) — แสดงเมื่อมีค่าพลังงานแล้ว */}
-              {parsedLabel.calories > 0 && (
+              {parsedLabel.calories > 0 && !incomplete && (
               <div
                 className={`p-4 rounded-2xl border ${
                   decision.verdict === 'unsafe'
@@ -478,51 +494,68 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                   <input
                     type="text"
                     value={parsedLabel.productName}
+                    placeholder="ชื่อรายการ"
+                    aria-label="ชื่อรายการ"
                     onChange={(e) => handleFieldChange('productName', e.target.value)}
                     className="text-right text-xs font-semibold text-ink-900 bg-cream-50 px-2 py-1 rounded-lg border border-line max-w-[180px]"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="bg-cream-50 p-2.5 rounded-xl border border-line">
-                    <span className="text-xs font-semibold text-ink-500 block">พลังงาน (kcal)</span>
+                  <div className={fieldBox('calories')}>
+                    <span className="text-xs font-semibold text-ink-500 flex items-center justify-between gap-1">
+                      พลังงาน (kcal)
+                      {estimated.has('calories') && (
+                        <span className="text-[11px] font-semibold text-peach-600" title="คำนวณจากไขมัน โปรตีน และคาร์บ">
+                          คำนวณ
+                        </span>
+                      )}
+                    </span>
                     <input
                       type="number"
-                      value={parsedLabel.calories}
-                      onChange={(e) => handleFieldChange('calories', Number(e.target.value))}
+                      inputMode="decimal"
+                      value={fieldValue('calories')}
+                      aria-invalid={missing.has('calories')}
+                      onChange={numberChange('calories')}
                       className="w-full text-base font-bold text-sage-600 focus:outline-none"
                     />
                   </div>
 
-                  <div className="bg-cream-50 p-2.5 rounded-xl border border-line">
+                  <div className={fieldBox('proteinGrams')}>
                     <span className="text-xs font-semibold text-ink-500 block">โปรตีน (g)</span>
                     <input
                       type="number"
                       step="0.1"
-                      value={parsedLabel.proteinGrams}
-                      onChange={(e) => handleFieldChange('proteinGrams', Number(e.target.value))}
+                      inputMode="decimal"
+                      value={fieldValue('proteinGrams')}
+                      aria-invalid={missing.has('proteinGrams')}
+                      onChange={numberChange('proteinGrams')}
                       className="w-full text-base font-bold text-sky-600 focus:outline-none"
                     />
                   </div>
 
-                  <div className="bg-cream-50 p-2.5 rounded-xl border border-line">
+                  <div className={fieldBox('carbsGrams')}>
                     <span className="text-xs font-semibold text-ink-500 block">คาร์โบไฮเดรต (g)</span>
                     <input
                       type="number"
                       step="0.1"
-                      value={parsedLabel.carbsGrams}
-                      onChange={(e) => handleFieldChange('carbsGrams', Number(e.target.value))}
+                      inputMode="decimal"
+                      value={fieldValue('carbsGrams')}
+                      aria-invalid={missing.has('carbsGrams')}
+                      onChange={numberChange('carbsGrams')}
                       className="w-full text-base font-bold text-sunny-600 focus:outline-none"
                     />
                   </div>
 
-                  <div className="bg-cream-50 p-2.5 rounded-xl border border-line">
+                  <div className={fieldBox('fatGrams')}>
                     <span className="text-xs font-semibold text-ink-500 block">ไขมัน (g)</span>
                     <input
                       type="number"
                       step="0.1"
-                      value={parsedLabel.fatGrams}
-                      onChange={(e) => handleFieldChange('fatGrams', Number(e.target.value))}
+                      inputMode="decimal"
+                      value={fieldValue('fatGrams')}
+                      aria-invalid={missing.has('fatGrams')}
+                      onChange={numberChange('fatGrams')}
                       className="w-full text-base font-bold text-peach-600 focus:outline-none"
                     />
                   </div>
@@ -579,13 +612,17 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
 
               <button
                 type="button"
+                disabled={incomplete}
                 onClick={() => {
-                  if (parsedLabel) {
-                    onConfirmLabel(parsedLabel, multiplier);
+                  if (parsedLabel && !incomplete) {
+                    onConfirmLabel(
+                      { ...parsedLabel, productName: parsedLabel.productName.trim() || 'ฉลากโภชนาการ' },
+                      multiplier
+                    );
                     onClose();
                   }
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage-600 hover:bg-sage-700 text-white font-bold text-xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage-600 hover:bg-sage-700 text-white font-bold text-xs disabled:opacity-40"
               >
                 <Check className="w-4 h-4" />
                 บันทึกอาหารมื้อนี้
