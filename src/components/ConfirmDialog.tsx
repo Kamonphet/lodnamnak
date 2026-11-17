@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { AlertTriangle, Check } from 'lucide-react';
 
 export interface ConfirmDialogState {
   title: string;
@@ -26,56 +25,42 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ dialog, onClose })
   }, [dialog, onClose]);
 
   if (!dialog) return null;
-
   const isDanger = dialog.tone === 'danger';
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-5 glass-modal-backdrop animate-backdrop-in"
+      className="fixed inset-0 z-50 flex items-center justify-center px-6 glass-modal-backdrop animate-backdrop-in"
       onClick={onClose}
       role="presentation"
     >
       <div
-        role="dialog"
+        role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
+        aria-describedby={dialog.detail ? 'confirm-dialog-detail' : undefined}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[340px] glass-card rounded-3xl p-5 space-y-4 animate-modal-pop"
+        className="w-full max-w-[340px] bg-cream-50 rounded-3xl p-5 space-y-4 shadow-[0_16px_40px_-12px_rgba(42,34,27,0.35)] animate-modal-pop"
       >
-        <div className="flex items-start gap-3">
-          <span
-            className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 animate-confirm-pop ${
-              isDanger ? 'bg-berry-100 text-berry-600' : 'bg-sage-100 text-sage-600'
-            }`}
-          >
-            {isDanger ? (
-              <AlertTriangle className="w-4 h-4" />
-            ) : (
-              <Check className="w-4 h-4" />
-            )}
-          </span>
-
-          <div className="space-y-1 min-w-0">
-            <h2 id="confirm-dialog-title" className="text-base font-bold text-ink-900">
-              {dialog.title}
-            </h2>
-            {dialog.detail && (
-              <p className="text-xs text-ink-700 leading-relaxed tabular-data">
-                {dialog.detail}
-              </p>
-            )}
-          </div>
+        <div className="space-y-1.5">
+          <h2 id="confirm-dialog-title" className="text-lg font-bold text-ink-900">
+            {dialog.title}
+          </h2>
+          {dialog.detail && (
+            <p id="confirm-dialog-detail" className="text-sm text-ink-700 leading-relaxed tabular-data">
+              {dialog.detail}
+            </p>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 pt-1">
+        <div className="grid grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="tactile-btn min-h-[42px] rounded-2xl glass-pill text-xs font-bold text-ink-900"
+            autoFocus
+            className="tactile-btn h-11 rounded-2xl glass-pill text-sm font-bold text-ink-900"
           >
             {dialog.cancelLabel ?? 'ยกเลิก'}
           </button>
-
           <button
             type="button"
             onClick={() => {
@@ -83,9 +68,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ dialog, onClose })
               onClose();
               fn();
             }}
-            className={`tactile-btn min-h-[42px] rounded-2xl text-xs font-bold ${
-              isDanger ? 'glass-btn-danger' : 'glass-btn-primary'
-            }`}
+            className={`tactile-btn h-11 rounded-2xl text-sm font-bold ${isDanger ? 'glass-btn-danger' : 'glass-btn-primary'}`}
           >
             {dialog.confirmLabel ?? 'ยืนยัน'}
           </button>

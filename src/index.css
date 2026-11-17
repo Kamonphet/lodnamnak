@@ -247,13 +247,6 @@
   animation: fadeUp 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.stagger-1,
-.stagger-2,
-.stagger-3,
-.stagger-4 {
-  animation-delay: 0ms;
-}
-
 .animate-toast-progress {
   transform-origin: left center;
   animation: toastProgress 3200ms linear forwards;

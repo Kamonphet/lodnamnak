@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   RefreshCw,
   ShieldAlert,
-  Sparkles,
   Upload,
   X,
 } from 'lucide-react';
@@ -244,27 +243,20 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
 
   // Portal ไปที่ body เพื่อไม่ให้ parent ที่มี transform/backdrop-filter ดึงตำแหน่ง fixed ไปผิดที่ และให้อยู่เหนือแถบเมนู
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center sm:p-3 bg-ink-900/60 backdrop-blur-md animate-toast-in">
-      <div className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-lg app-sheet sm:rounded-3xl shadow-modal overflow-hidden flex flex-col sm:border sm:border-line">
+    <div className="fixed inset-0 z-[100] flex sm:items-center sm:justify-center sm:p-3 glass-modal-backdrop animate-backdrop-in">
+      <div className="w-full h-dvh sm:h-auto sm:max-h-[92vh] sm:max-w-lg app-sheet sm:rounded-3xl overflow-hidden flex flex-col sm:border sm:border-line">
         {/* Header */}
         <div
-          className="px-5 pb-3 pt-3 border-b border-sand-100 flex items-center justify-between bg-cream-200"
+          className="px-4 pb-3 pt-3 glass-header flex items-center justify-between"
           style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
         >
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-sage-500/15 flex items-center justify-center text-sage-600">
-              <Camera className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-ink-900">
-                {step === 'review_decision' ? 'ตรวจสอบข้อมูลฉลาก' : 'ถ่ายภาพฉลากโภชนาการ'}
-              </h2>
-            </div>
-          </div>
+          <h2 className="text-lg font-bold text-ink-900">
+            {step === 'review_decision' ? 'ตรวจสอบข้อมูลฉลาก' : 'ถ่ายฉลากโภชนาการ'}
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-sand-100 text-ink-500"
+            className="tactile-btn w-9 h-9 rounded-full flex items-center justify-center hover:bg-cream-200 text-ink-700"
             aria-label="ปิด"
           >
             <X className="w-5 h-5" />
@@ -276,15 +268,15 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
           {/* STEP 1: หน้ากล้องสด */}
           {step === 'camera' && (
             <div className="flex-1 min-h-0 flex flex-col gap-4">
-              <div className="relative flex-1 min-h-[280px] sm:aspect-[3/4] sm:max-h-[440px] bg-ink-900 rounded-2xl overflow-hidden flex items-center justify-center border border-sand-200">
+              <div className="relative flex-1 min-h-[280px] sm:aspect-[3/4] sm:max-h-[440px] bg-ink-900 rounded-2xl overflow-hidden flex items-center justify-center border border-line">
                 {cameraError ? (
                   <div className="p-4 text-center space-y-3 text-white">
-                    <AlertTriangle className="w-10 h-10 mx-auto text-sunny-400" />
+                    <AlertTriangle className="w-10 h-10 mx-auto text-sunny-500" />
                     <p className="text-sm font-medium">{cameraError}</p>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage-500 text-white font-bold text-sm"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl glass-btn-primary font-bold text-sm"
                     >
                       <Upload className="w-4 h-4" />
                       เลือกภาพจากเครื่อง
@@ -302,15 +294,15 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                     {/* กรอบช่วยเล็งถ่ายฉลาก */}
                     <div className="absolute inset-x-8 inset-y-12 border-2 border-dashed border-line rounded-2xl pointer-events-none flex flex-col justify-between p-3">
                       <div className="flex justify-between">
-                        <span className="w-4 h-4 border-t-2 border-l-2 border-sage-400 rounded-tl" />
-                        <span className="w-4 h-4 border-t-2 border-r-2 border-sage-400 rounded-tr" />
+                        <span className="w-4 h-4 border-t-2 border-l-2 border-sage-500 rounded-tl" />
+                        <span className="w-4 h-4 border-t-2 border-r-2 border-sage-500 rounded-tr" />
                       </div>
-                      <div className="text-center text-xs text-white/90 font-semibold bg-ink-900/60 px-3 py-1.5 rounded-full backdrop-blur-sm self-center">
+                      <div className="text-center text-xs text-white/90 font-semibold bg-ink-900/60 px-3 py-1.5 rounded-full self-center">
                         จัดตารางโภชนาการให้อยู่ในกรอบ
                       </div>
                       <div className="flex justify-between">
-                        <span className="w-4 h-4 border-b-2 border-l-2 border-sage-400 rounded-bl" />
-                        <span className="w-4 h-4 border-b-2 border-r-2 border-sage-400 rounded-br" />
+                        <span className="w-4 h-4 border-b-2 border-l-2 border-sage-500 rounded-bl" />
+                        <span className="w-4 h-4 border-b-2 border-r-2 border-sage-500 rounded-br" />
                       </div>
                     </div>
                   </>
@@ -332,7 +324,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="tactile-btn p-3.5 rounded-2xl bg-white border border-sand-200 text-ink-700 hover:bg-sand-50"
+                  className="tactile-btn p-3.5 rounded-2xl bg-cream-50 border border-line text-ink-700 hover:bg-cream-200"
                   aria-label="อัปโหลดรูปภาพ"
                 >
                   <ImageIcon className="w-5 h-5" />
@@ -342,7 +334,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                   <button
                     type="button"
                     onClick={handleCaptureShutter}
-                    className="tactile-btn w-16 h-16 rounded-full bg-sage-500 text-white shadow-lg flex items-center justify-center border-4 border-line hover:bg-sage-600"
+                    className="tactile-btn w-16 h-16 rounded-full bg-sage-600 text-white flex items-center justify-center border-4 border-line hover:bg-sage-700"
                     aria-label="ถ่ายภาพ"
                   >
                     <div className="w-12 h-12 rounded-full border-2 border-line flex items-center justify-center">
@@ -354,7 +346,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                 <button
                   type="button"
                   onClick={startCamera}
-                  className="tactile-btn p-3.5 rounded-2xl bg-white border border-sand-200 text-ink-700 hover:bg-sand-50"
+                  className="tactile-btn p-3.5 rounded-2xl bg-cream-50 border border-line text-ink-700 hover:bg-cream-200"
                   aria-label="รีเฟรชกล้อง"
                 >
                   <RefreshCw className="w-5 h-5" />
@@ -366,16 +358,11 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
           {/* STEP 2: ประมวลผล OCR */}
           {step === 'ocr_processing' && (
             <div className="py-12 px-4 text-center space-y-4">
-              <div className="relative w-20 h-20 mx-auto">
-                <div className="w-20 h-20 rounded-full border-4 border-sage-100 border-t-sage-500 animate-spin flex items-center justify-center" />
-                <div className="absolute inset-0 flex items-center justify-center text-sage-600">
-                  <Sparkles className="w-7 h-7 animate-pulse" />
-                </div>
-              </div>
+              <div className="w-12 h-12 mx-auto rounded-full border-4 border-cream-200 border-t-sage-600 animate-spin" aria-hidden="true" />
               <h3 className="text-base font-bold text-ink-900">{ocrStatusText}</h3>
-              <div className="w-48 h-2 bg-sand-100 rounded-full mx-auto overflow-hidden">
+              <div className="w-48 h-2 bg-cream-200 rounded-full mx-auto overflow-hidden">
                 <div
-                  className="h-full bg-sage-500 transition-all duration-300"
+                  className="h-full bg-sage-600 transition-all duration-300"
                   style={{ width: `${Math.max(10, ocrProgress)}%` }}
                 />
               </div>
@@ -389,10 +376,10 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                 <img
                   src={capturedImageUrl}
                   alt=""
-                  className="w-24 h-24 mx-auto rounded-2xl object-cover border border-sand-200"
+                  className="w-24 h-24 mx-auto rounded-2xl object-cover border border-line"
                 />
               )}
-              <div className="flex items-center justify-center gap-2 text-amber-700">
+              <div className="flex items-center justify-center gap-2 text-peach-600">
                 <AlertTriangle className="w-5 h-5 shrink-0" />
                 <h3 className="text-base font-bold">อ่านตัวเลขบนฉลากไม่ได้</h3>
               </div>
@@ -400,7 +387,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                 <button
                   type="button"
                   onClick={handleRetake}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage-500 hover:bg-sage-600 text-white font-bold text-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage-600 hover:bg-sage-700 text-white font-bold text-sm"
                 >
                   <Camera className="w-4 h-4" />
                   ถ่ายใหม่
@@ -408,7 +395,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                 <button
                   type="button"
                   onClick={handleManualEntry}
-                  className="px-4 py-2 rounded-xl bg-white border border-sand-200 text-ink-700 font-semibold text-sm hover:bg-sand-50"
+                  className="px-4 py-2 rounded-xl bg-cream-50 border border-line text-ink-700 font-semibold text-sm hover:bg-cream-200"
                 >
                   กรอกเอง
                 </button>
@@ -424,21 +411,21 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
               <div
                 className={`p-4 rounded-2xl border ${
                   decision.verdict === 'unsafe'
-                    ? 'bg-rose-50 border-rose-200 text-rose-900'
+                    ? 'bg-berry-50 border-berry-100 text-berry-800'
                     : decision.verdict === 'caution'
-                    ? 'bg-amber-50 border-amber-200 text-amber-900'
+                    ? 'bg-peach-50 border-peach-200 text-peach-800'
                     : decision.verdict === 'acceptable'
-                    ? 'bg-sky-50 border-sky-200 text-sky-900'
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                    ? 'bg-sky-50 border-sky-100 text-sky-800'
+                    : 'bg-sage-50 border-sage-200 text-sage-900'
                 } space-y-2`}
               >
                 <div className="flex items-center gap-2">
                   {decision.verdict === 'unsafe' ? (
-                    <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
+                    <ShieldAlert className="w-5 h-5 text-berry-600 shrink-0" />
                   ) : decision.verdict === 'caution' ? (
-                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                    <AlertTriangle className="w-5 h-5 text-peach-600 shrink-0" />
                   ) : (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-5 h-5 text-sage-600 shrink-0" />
                   )}
                   <h3 className="text-sm font-bold leading-tight">{decision.headline}</h3>
                 </div>
@@ -447,9 +434,9 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
 
                 {/* เตือนสารก่อภูมิแพ้ */}
                 {decision.allergenAlerts.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-rose-200/60 space-y-1">
+                  <div className="mt-2 pt-2 border-t border-berry-100 space-y-1">
                     {decision.allergenAlerts.map((alert, i) => (
-                      <div key={i} className="text-xs font-semibold text-rose-700 flex items-center gap-1.5">
+                      <div key={i} className="text-xs font-semibold text-berry-600 flex items-center gap-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                         <span>{alert}</span>
                       </div>
@@ -463,7 +450,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                     {decision.macroHighlights.map((hi, i) => (
                       <span
                         key={i}
-                        className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cream-200 backdrop-blur-sm border border-black/5"
+                        className="text-xs font-bold px-2 py-0.5 rounded-full bg-cream-200 border border-black/5"
                       >
                         {hi}
                       </span>
@@ -474,11 +461,11 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
               )}
 
               {/* ฟอร์มตรวจสอบและแก้ไขตัวเลข */}
-              <div className="bg-sand-50/70 p-4 rounded-2xl border border-sand-200/80 space-y-3">
+              <div className="bg-cream-100 p-4 rounded-2xl border border-line space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     {capturedImageUrl && (
-                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-sand-200 shrink-0 bg-black/10">
+                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-line shrink-0 bg-black/10">
                         <img
                           src={capturedImageUrl}
                           alt=""
@@ -492,13 +479,13 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                     type="text"
                     value={parsedLabel.productName}
                     onChange={(e) => handleFieldChange('productName', e.target.value)}
-                    className="text-right text-xs font-semibold text-ink-900 bg-white px-2 py-1 rounded-lg border border-sand-200 max-w-[180px]"
+                    className="text-right text-xs font-semibold text-ink-900 bg-cream-50 px-2 py-1 rounded-lg border border-line max-w-[180px]"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="bg-white p-2.5 rounded-xl border border-sand-200">
-                    <span className="text-[11px] font-semibold text-ink-500 block">พลังงาน (kcal)</span>
+                  <div className="bg-cream-50 p-2.5 rounded-xl border border-line">
+                    <span className="text-xs font-semibold text-ink-500 block">พลังงาน (kcal)</span>
                     <input
                       type="number"
                       value={parsedLabel.calories}
@@ -507,8 +494,8 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                     />
                   </div>
 
-                  <div className="bg-white p-2.5 rounded-xl border border-sand-200">
-                    <span className="text-[11px] font-semibold text-ink-500 block">โปรตีน (g)</span>
+                  <div className="bg-cream-50 p-2.5 rounded-xl border border-line">
+                    <span className="text-xs font-semibold text-ink-500 block">โปรตีน (g)</span>
                     <input
                       type="number"
                       step="0.1"
@@ -518,8 +505,8 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                     />
                   </div>
 
-                  <div className="bg-white p-2.5 rounded-xl border border-sand-200">
-                    <span className="text-[11px] font-semibold text-ink-500 block">คาร์โบไฮเดรต (g)</span>
+                  <div className="bg-cream-50 p-2.5 rounded-xl border border-line">
+                    <span className="text-xs font-semibold text-ink-500 block">คาร์โบไฮเดรต (g)</span>
                     <input
                       type="number"
                       step="0.1"
@@ -529,8 +516,8 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                     />
                   </div>
 
-                  <div className="bg-white p-2.5 rounded-xl border border-sand-200">
-                    <span className="text-[11px] font-semibold text-ink-500 block">ไขมัน (g)</span>
+                  <div className="bg-cream-50 p-2.5 rounded-xl border border-line">
+                    <span className="text-xs font-semibold text-ink-500 block">ไขมัน (g)</span>
                     <input
                       type="number"
                       step="0.1"
@@ -542,7 +529,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                 </div>
 
                 {/* สัดส่วนการรับประทาน (Multiplier) */}
-                <div className="flex items-center justify-between pt-2 border-t border-sand-200">
+                <div className="flex items-center justify-between pt-2 border-t border-line">
                   <span className="text-xs font-semibold text-ink-700">สัดส่วนที่ทาน</span>
                   <div className="flex gap-1">
                     {[0.5, 1, 1.5, 2].map((m) => (
@@ -550,10 +537,10 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                         key={m}
                         type="button"
                         onClick={() => setMultiplier(m)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                        className={`tactile-btn h-8 min-w-[40px] px-2.5 rounded-full text-sm font-semibold tabular-data ${
                           multiplier === m
-                            ? 'bg-sage-500 text-white shadow-sm'
-                            : 'bg-white border border-sand-200 text-ink-700 hover:bg-sand-100'
+                            ? 'glass-btn-primary'
+                            : 'glass-pill text-ink-700'
                         }`}
                       >
                         {m}x
@@ -564,7 +551,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
               </div>
 
               {/* ยอดรวมที่ปรับตามสัดส่วน */}
-              <div className="flex items-center justify-between px-3 py-2 bg-sage-500/10 rounded-xl text-xs font-semibold text-sage-900">
+              <div className="flex items-center justify-between px-3 py-2 bg-sage-600/10 rounded-xl text-xs font-semibold text-sage-900">
                 <span>ยอดบันทึกจริง ({multiplier}x):</span>
                 <span className="font-bold tabular-nums">
                   ~{Math.round(parsedLabel.calories * multiplier)} kcal · โปรตีน {(parsedLabel.proteinGrams * multiplier).toFixed(1)}g
@@ -577,14 +564,14 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
         {/* Footer Actions (หน้าตรวจสอบเท่านั้น; ขั้นอื่นปิดด้วยปุ่ม X) */}
         {step === 'review_decision' && (
         <div
-          className="px-5 pt-3 border-t border-sand-100 flex items-center justify-between bg-cream-200"
+          className="px-4 pt-3 border-t border-line flex items-center justify-between bg-cream-50"
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         >
             <>
               <button
                 type="button"
                 onClick={handleRetake}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-ink-600 hover:bg-sand-100"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-ink-700 hover:bg-cream-200"
               >
                 <ChevronLeft className="w-4 h-4" />
                 ถ่ายใหม่
@@ -598,7 +585,7 @@ export const NutritionLabelScannerModal: React.FC<NutritionLabelScannerModalProp
                     onClose();
                   }
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage-500 hover:bg-sage-600 text-white font-bold text-xs shadow-md"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage-600 hover:bg-sage-700 text-white font-bold text-xs"
               >
                 <Check className="w-4 h-4" />
                 บันทึกอาหารมื้อนี้

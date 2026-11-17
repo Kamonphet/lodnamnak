@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Send, ShieldAlert, Sparkles, User } from 'lucide-react';
+import { ArrowUp, ShieldAlert } from 'lucide-react';
 import { buildContextualCoachSuggestions } from '../domain/coachAssistant';
 import { CoachChatMessage, UserProfile } from '../domain/types';
 
@@ -9,18 +9,11 @@ interface CoachChatTabProps {
   onSendMessage: (text: string) => void;
 }
 
-export const CoachChatTab: React.FC<CoachChatTabProps> = ({
-  profile,
-  messages,
-  onSendMessage,
-}) => {
+export const CoachChatTab: React.FC<CoachChatTabProps> = ({ profile, messages, onSendMessage }) => {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const suggestedPrompts = useMemo(
-    () => buildContextualCoachSuggestions(profile),
-    [profile]
-  );
+  const suggestedPrompts = useMemo(() => buildContextualCoachSuggestions(profile), [profile]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -34,50 +27,38 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-11.2rem)] min-h-[470px]">
-      <h1 className="text-xl font-bold text-ink-900 mb-3">โค้ช AI</h1>
+    <div className="flex flex-col h-[calc(100dvh-10.5rem)] min-h-[460px]">
+      <h1 className="text-[22px] font-bold text-ink-900 mb-3">โค้ช</h1>
 
-      <div className="flex-1 overflow-y-auto rounded-3xl glass-card p-3.5 space-y-3 animate-card-rise stagger-1">
+      <div className="flex-1 overflow-y-auto space-y-3 pb-2 pr-1" role="log" aria-label="บทสนทนากับโค้ช">
         {messages.map((msg) => {
-          const isUser = msg.sender === 'user';
-          if (isUser) {
+          if (msg.sender === 'user') {
             return (
-              <div key={msg.id} className="flex justify-end gap-2 animate-list-item">
-                <div className="max-w-[82%] rounded-3xl rounded-br-md glass-btn-primary px-3.5 py-2.5 text-sm leading-relaxed">
+              <div key={msg.id} className="flex justify-end">
+                <p className="max-w-[82%] rounded-3xl rounded-br-md bg-sage-600 text-white px-3.5 py-2.5 text-[15px] leading-relaxed whitespace-pre-line">
                   {msg.text}
-                </div>
-                <span className="w-7 h-7 rounded-full bg-peach-100 text-peach-600 inline-flex items-center justify-center shrink-0 self-end">
-                  <User className="w-3.5 h-3.5" />
-                </span>
+                </p>
               </div>
             );
           }
-
           return (
-            <div key={msg.id} className="flex justify-start gap-2 animate-list-item">
-              <span className="w-7 h-7 rounded-full bg-sage-100 text-sage-600 inline-flex items-center justify-center shrink-0 self-start mt-0.5">
-                <Bot className="w-4 h-4" />
-              </span>
+            <div key={msg.id} className="flex justify-start">
               <div
-                className={`max-w-[85%] rounded-3xl rounded-tl-md p-3.5 text-sm leading-relaxed space-y-1.5 ${
-                  msg.safetyTriggered
-                    ? 'glass-alert-critical text-berry-800'
-                    : 'glass-subtle text-ink-900'
+                className={`max-w-[88%] rounded-3xl rounded-bl-md px-3.5 py-2.5 space-y-1 ${
+                  msg.safetyTriggered ? 'glass-alert-critical text-berry-800' : 'glass-card text-ink-900'
                 }`}
               >
                 {msg.badge && (
-                  <div className="inline-flex items-center gap-1 rounded-full glass-pill px-2.5 py-0.5 text-[11px] font-bold text-sage-700">
-                    {msg.safetyTriggered ? (
-                      <ShieldAlert className="w-3.5 h-3.5 text-berry-600" />
-                    ) : (
-                      <Sparkles className="w-3.5 h-3.5 text-sage-600" />
-                    )}
-                    <span className={msg.safetyTriggered ? 'text-berry-800' : 'text-sage-700'}>
-                      {msg.badge}
-                    </span>
-                  </div>
+                  <p
+                    className={`inline-flex items-center gap-1 text-xs font-semibold ${
+                      msg.safetyTriggered ? 'text-berry-600' : 'text-sage-700'
+                    }`}
+                  >
+                    {msg.safetyTriggered && <ShieldAlert className="w-3.5 h-3.5" />}
+                    {msg.badge}
+                  </p>
                 )}
-                <p className="whitespace-pre-line text-xs sm:text-sm">{msg.text}</p>
+                <p className="text-[15px] leading-relaxed whitespace-pre-line">{msg.text}</p>
               </div>
             </div>
           );
@@ -85,35 +66,35 @@ export const CoachChatTab: React.FC<CoachChatTabProps> = ({
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto py-2.5">
+      <div className="flex gap-1.5 overflow-x-auto py-2 -mx-4 px-4 [scrollbar-width:none]">
         {suggestedPrompts.map((prompt) => (
           <button
             key={prompt}
             type="button"
             onClick={() => onSendMessage(prompt)}
-            className="tactile-btn shrink-0 rounded-full glass-pill px-3 py-1.5 text-xs font-medium text-ink-900"
+            className="tactile-btn shrink-0 h-8 rounded-full glass-pill px-3 text-sm text-ink-700"
           >
             {prompt}
           </button>
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="พิมพ์ข้อความ..."
+          placeholder="พิมพ์ข้อความ"
           aria-label="พิมพ์ข้อความ"
-          className="flex-1 min-h-[46px] rounded-2xl glass-input px-3.5 text-sm text-ink-900"
+          className="flex-1 min-w-0 h-11 rounded-full glass-input px-4 text-base text-ink-900"
         />
         <button
           type="submit"
           disabled={!input.trim()}
           aria-label="ส่งข้อความ"
-          className="tactile-btn min-h-[46px] min-w-[46px] rounded-2xl glass-btn-primary disabled:opacity-50 flex items-center justify-center shrink-0"
+          className="tactile-btn w-11 h-11 rounded-full glass-btn-primary disabled:opacity-40 flex items-center justify-center shrink-0"
         >
-          <Send className="w-4 h-4" />
+          <ArrowUp className="w-5 h-5" />
         </button>
       </form>
     </div>

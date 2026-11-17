@@ -63,7 +63,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [stepDir, setStepDir] = useState<'right' | 'left'>('right');
 
   const [name, setName] = useState(editingProfile?.name ?? '');
   const [gender, setGender] = useState<Gender>(editingProfile?.gender ?? 'female');
@@ -177,13 +176,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
   const handleNext = () => {
     if (!validateCurrentStep()) return;
-    setStepDir('right');
     setStep((prev) => (prev === 1 ? 2 : 3));
   };
 
   const handleBack = (targetStep: 1 | 2) => {
     setErrorMessage(null);
-    setStepDir('left');
     setStep(targetStep);
   };
 
@@ -244,9 +241,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   };
 
   return (
-    <div className="px-4 py-4 pb-10 space-y-4 animate-page-right">
+    <div className="px-4 py-4 pb-10 space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-ink-900">
+        <h1 className="text-[22px] font-bold text-ink-900">
           {editingProfile
             ? 'แก้ไขโปรไฟล์'
             : isCreatingNewUser
@@ -266,9 +263,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="tactile-btn inline-flex items-center gap-1 rounded-full glass-pill px-3 py-2 text-xs font-semibold text-ink-900"
+                className="tactile-btn h-9 inline-flex items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-sage-700 hover:bg-sage-50"
               >
-                <Upload className="w-3.5 h-3.5 text-sage-600" />
+                <Upload className="w-4 h-4" />
                 <span>นำเข้า JSON</span>
               </button>
             </>
@@ -277,7 +274,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="tactile-btn rounded-full px-3.5 py-2 text-xs font-semibold glass-pill text-ink-900"
+              className="tactile-btn h-9 rounded-full px-3 text-sm font-semibold text-ink-700 hover:bg-cream-200"
             >
               ยกเลิก
             </button>
@@ -285,7 +282,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         </div>
       </div>
 
-      <div className="space-y-2.5 animate-card-rise stagger-1">
+      <div className="space-y-2.5">
         <Avatar3DScene
           name={name}
           gender={gender}
@@ -300,32 +297,34 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           avatarStyle={{ shirtColor, skinTone }}
         />
 
-        <div className="rounded-2xl glass-card p-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="rounded-2xl glass-card px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-ink-700 mr-1">สีชุด</span>
+            <span className="text-sm text-ink-500 mr-1">สีชุด</span>
             {SHIRT_COLORS.map((c) => (
               <button
                 key={c.hex}
                 type="button"
                 onClick={() => setShirtColor(c.hex)}
                 aria-label={`สีชุด ${c.label}`}
-                className={`w-6 h-6 rounded-full transition-transform ${
-                  shirtColor === c.hex ? 'scale-110 ring-2 ring-ink-900 ring-offset-2' : ''
+                aria-pressed={shirtColor === c.hex}
+                className={`w-7 h-7 rounded-full border-2 border-cream-50 shadow-[0_0_0_1px_#E6DACB] transition-transform ${
+                  shirtColor === c.hex ? 'scale-110 ring-2 ring-ink-900 ring-offset-1' : ''
                 }`}
                 style={{ backgroundColor: c.hex }}
               />
             ))}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-ink-700 mr-1">ผิว</span>
+            <span className="text-sm text-ink-500 mr-1">ผิว</span>
             {SKIN_TONES.map((s) => (
               <button
                 key={s.hex}
                 type="button"
                 onClick={() => setSkinTone(s.hex)}
                 aria-label={s.label}
-                className={`w-6 h-6 rounded-full border border-ink-300 transition-transform ${
-                  skinTone === s.hex ? 'scale-110 ring-2 ring-ink-900 ring-offset-2' : ''
+                aria-pressed={skinTone === s.hex}
+                className={`w-7 h-7 rounded-full border-2 border-cream-50 shadow-[0_0_0_1px_#E6DACB] transition-transform ${
+                  skinTone === s.hex ? 'scale-110 ring-2 ring-ink-900 ring-offset-1' : ''
                 }`}
                 style={{ backgroundColor: s.hex }}
               />
@@ -334,44 +333,25 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         </div>
       </div>
 
-      {/* แถบขั้นตอนพร้อมตัวเลื่อนแบบ Liquid Glass */}
-      <div
-        className="relative grid grid-cols-3 p-1 rounded-full glass-card animate-card-rise stagger-2"
-        aria-label="ขั้นตอนการตั้งค่า"
-      >
-        <div
-          aria-hidden="true"
-          className="absolute top-1 bottom-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-full glass-btn-primary transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${(step - 1) * 100}%)` }}
-        />
-        {[
-          { num: 1, title: 'ร่างกาย' },
-          { num: 2, title: 'เป้าหมาย' },
-          { num: 3, title: 'ข้อจำกัด' },
-        ].map((item) => {
-          const active = step === item.num;
-          const done = step > item.num;
-          return (
-            <div
-              key={item.num}
-              className={`relative z-10 py-1.5 px-2 text-center text-xs font-bold transition-colors ${
-                active
-                  ? 'text-cream-50'
-                  : done
-                  ? 'text-sage-700'
-                  : 'text-ink-700'
-              }`}
-            >
-              {item.title}
-            </div>
-          );
-        })}
+      {/* ขั้นตอน: แถบบาง 3 ช่อง + ชื่อขั้นปัจจุบัน */}
+      <div className="space-y-1.5" aria-label="ขั้นตอนการตั้งค่า">
+        <div className="flex items-baseline justify-between text-sm">
+          <span className="font-semibold text-ink-900">{['ร่างกาย', 'เป้าหมาย', 'ข้อจำกัด'][step - 1]}</span>
+          <span className="text-ink-500 tabular-data">
+            {step}/3
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5" aria-hidden="true">
+          {[1, 2, 3].map((n) => (
+            <span key={n} className={`h-1 rounded-full transition-colors ${n <= step ? 'bg-sage-600' : 'bg-cream-200'}`} />
+          ))}
+        </div>
       </div>
 
       {errorMessage && (
         <div
           role="alert"
-          className="rounded-2xl glass-alert-critical p-3.5 flex items-start gap-2.5 text-berry-800 animate-toast-in"
+          className="rounded-2xl glass-alert-critical p-3.5 flex items-start gap-2.5 text-berry-800"
         >
           <AlertCircle className="w-5 h-5 text-berry-600 shrink-0 mt-0.5" />
           <p className="text-sm font-medium">{errorMessage}</p>
@@ -380,11 +360,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-3xl glass-card p-4 space-y-4 overflow-hidden animate-card-rise stagger-3"
+        className="rounded-3xl glass-card p-4 space-y-4 overflow-hidden"
       >
         <div
           key={step}
-          className={stepDir === 'right' ? 'animate-page-right' : 'animate-page-left'}
+          className="animate-page-right"
         >
           {step === 1 && (
             <div className="space-y-4">
@@ -661,7 +641,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                     {customExercises.map((sport) => (
                       <span
                         key={sport}
-                        className="inline-flex items-center gap-1 rounded-full glass-alert-warn px-3 py-1 text-xs font-semibold text-peach-800 animate-list-item"
+                        className="inline-flex items-center gap-1 rounded-full glass-subtle-active h-8 pl-3 pr-1.5 text-sm font-semibold text-sage-900"
                       >
                         <span>{sport}</span>
                         <button

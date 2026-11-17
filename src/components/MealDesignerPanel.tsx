@@ -210,7 +210,7 @@ export const MealDesignerPanel: React.FC<MealDesignerPanelProps> = ({
   return (
     <div className="space-y-3.5">
       {/* รูปแบบมื้อและผลรวมแผน */}
-      <section className="rounded-3xl glass-card p-4 space-y-3 animate-card-rise stagger-1">
+      <section className="rounded-3xl glass-card p-4 space-y-3 animate-card-rise">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <h2 className="text-base font-bold text-ink-900 shrink-0">รูปแบบมื้อ</h2>
